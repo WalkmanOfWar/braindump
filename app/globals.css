@@ -1,0 +1,106 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* TaskApp Design System */
+  --background: #ffffff;
+  --background-subtle: #f7f7f5;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: #1a1a1a;
+  --primary-foreground: #ffffff;
+  --secondary: #f7f7f5;
+  --secondary-foreground: #1a1a1a;
+  --muted: #f7f7f5;
+  --muted-foreground: #888888;
+  --accent: #ffd43b;
+  --accent-foreground: #1a1a1a;
+  --destructive: #ff6b6b;
+  --destructive-foreground: #ffffff;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #1a1a1a;
+  --radius: 0.5rem;
+  
+  /* Urgency colors */
+  --urgency-critical: #ff6b6b;
+  --urgency-high: #ffa94d;
+  --urgency-medium: #ffd43b;
+  --urgency-low: #69db7c;
+  
+  /* Category colors */
+  --category-praca: #60a5fa;
+  --category-nauka: #ffd43b;
+  --category-dom: #f9a8d4;
+  --category-zdrowie: #6ee7b7;
+  --category-osobiste: #a5b4fc;
+  
+  /* Status colors */
+  --success: #69db7c;
+  --warning: #ffa94d;
+  --danger: #ff6b6b;
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
+  --color-background: var(--background);
+  --color-background-subtle: var(--background-subtle);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-urgency-critical: var(--urgency-critical);
+  --color-urgency-high: var(--urgency-high);
+  --color-urgency-medium: var(--urgency-medium);
+  --color-urgency-low: var(--urgency-low);
+  --color-category-praca: var(--category-praca);
+  --color-category-nauka: var(--category-nauka);
+  --color-category-dom: var(--category-dom);
+  --color-category-zdrowie: var(--category-zdrowie);
+  --color-category-osobiste: var(--category-osobiste);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar for study sessions */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
