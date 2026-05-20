@@ -4,41 +4,41 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* TaskApp Design System */
-  --background: #ffffff;
-  --background-subtle: #f7f7f5;
-  --foreground: #1a1a1a;
+  /* Brain Dump Design System */
+  --background: #faf9f7;
+  --background-subtle: #f3f1ed;
+  --foreground: #2d2a26;
   --card: #ffffff;
-  --card-foreground: #1a1a1a;
+  --card-foreground: #2d2a26;
   --popover: #ffffff;
-  --popover-foreground: #1a1a1a;
-  --primary: #1a1a1a;
+  --popover-foreground: #2d2a26;
+  --primary: #7c5cff;
   --primary-foreground: #ffffff;
-  --secondary: #f7f7f5;
-  --secondary-foreground: #1a1a1a;
-  --muted: #f7f7f5;
-  --muted-foreground: #888888;
-  --accent: #ffd43b;
-  --accent-foreground: #1a1a1a;
-  --destructive: #ff6b6b;
+  --secondary: #f3f1ed;
+  --secondary-foreground: #2d2a26;
+  --muted: #f3f1ed;
+  --muted-foreground: #8a8580;
+  --accent: #7c5cff;
+  --accent-foreground: #ffffff;
+  --destructive: #e55a5a;
   --destructive-foreground: #ffffff;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #1a1a1a;
-  --radius: 0.5rem;
+  --border: #e8e5df;
+  --input: #e8e5df;
+  --ring: #7c5cff;
+  --radius: 0.625rem;
   
   /* Urgency colors */
-  --urgency-critical: #ff6b6b;
-  --urgency-high: #ffa94d;
-  --urgency-medium: #ffd43b;
-  --urgency-low: #69db7c;
+  --urgency-critical: #e55a5a;
+  --urgency-high: #f0a050;
+  --urgency-medium: #e8c547;
+  --urgency-low: #5cb87a;
   
   /* Category colors */
-  --category-praca: #60a5fa;
-  --category-nauka: #ffd43b;
-  --category-dom: #f9a8d4;
-  --category-zdrowie: #6ee7b7;
-  --category-osobiste: #a5b4fc;
+  --category-praca: #5a9cf0;
+  --category-nauka: #7c5cff;
+  --category-dom: #e89ac0;
+  --category-zdrowie: #5cb87a;
+  --category-osobiste: #9b8cff;
   
   /* Status colors */
   --success: #69db7c;

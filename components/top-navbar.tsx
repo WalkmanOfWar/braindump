@@ -22,7 +22,7 @@ export function TopNavbar() {
       <div className="flex h-14 items-center justify-between px-4 md:px-6">
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="text-xl font-bold text-foreground">TaskApp</span>
+          <span className="text-xl font-bold text-primary">Brain Dump</span>
         </Link>
 
         {/* Desktop Navigation */}

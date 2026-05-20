@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'TaskApp - Ogarnij wszystko',
-  description: 'Aplikacja do zarządzania zadaniami i nauką. Ogarnij wszystko. Zacznij od jednego kliknięcia.',
+  title: 'Brain Dump - Wyrzuć myśli z głowy',
+  description: 'Aplikacja do zarządzania zadaniami i nauką. Wyrzuć myśli z głowy i zacznij działać.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#ffffff',
+  themeColor: '#7c5cff',
   width: 'device-width',
   initialScale: 1,
 }
