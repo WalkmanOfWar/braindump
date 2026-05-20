@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { signOut, useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ const navItems = [
 
 export function TopNavbar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
@@ -52,19 +54,19 @@ export function TopNavbar() {
         {/* User Section */}
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
-            <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=user" alt="Avatar" />
-            <AvatarFallback>JK</AvatarFallback>
+            <AvatarImage src={session?.user?.image ?? undefined} alt={session?.user?.name ?? "Avatar"} />
+            <AvatarFallback>
+              {session?.user?.name?.[0]?.toUpperCase() ?? "?"}
+            </AvatarFallback>
           </Avatar>
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => signOut({ callbackUrl: "/login" })}
             className="hidden sm:flex items-center gap-2 text-muted-foreground hover:text-foreground"
-            asChild
           >
-            <Link href="/login">
-              <LogOut className="h-4 w-4" />
-              <span>Wyloguj</span>
-            </Link>
+            <LogOut className="h-4 w-4" />
+            <span>Wyloguj</span>
           </Button>
         </div>
       </div>
