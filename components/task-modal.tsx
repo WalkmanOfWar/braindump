@@ -23,16 +23,18 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { X, Plus } from 'lucide-react'
-import { Task, Category, categories } from '@/lib/mock-data'
+import { Task } from '@/lib/mock-data'
+import type { Category } from '@/types'
 
 interface TaskModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   task?: Task | null
+  categories?: Category[]
   onSave: (task: Partial<Task>) => void
 }
 
-export function TaskModal({ open, onOpenChange, task, onSave }: TaskModalProps) {
+export function TaskModal({ open, onOpenChange, task, categories = [], onSave }: TaskModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [deadline, setDeadline] = useState('')

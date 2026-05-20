@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String?
+  image        String?
+  googleTokens Json?
+  createdAt    DateTime   @default(now())
+  tasks        Task[]
+  exams        Exam[]
+  categories   Category[]
+  accounts     Account[]
+  sessions     Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  access_token      String?
+  refresh_token     String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Category {
+  id     String @id @default(cuid())
+  name   String
+  color  String @default("#888888")
+  userId String
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+  exams Exam[]
+}
+
+model Task {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  deadline      DateTime?
+  priority      Int       @default(3)
+  done          Boolean   @default(false)
+  doneAt        DateTime?
+  tags          String[]
+  googleEventId String?
+  userId        String
+  categoryId    String?
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Exam {
+  id         String   @id @default(cuid())
+  title      String
+  examDate   DateTime
+  dailyHours Float    @default(1)
+  userId     String
+  categoryId String?
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category?      @relation(fields: [categoryId], references: [id])
+  studySessions StudySession[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StudySession {
+  id            String   @id @default(cuid())
+  examId        String
+  date          DateTime
+  topic         String
+  hours         Float
+  done          Boolean  @default(false)
+  googleEventId String?
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+}

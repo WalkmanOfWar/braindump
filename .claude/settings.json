@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "agent",
+            "statusMessage": "[review] Sprawdzam jakosc kodu...",
+            "timeout": 90,
+            "prompt": "Plik zostal wlasnie zmodyfikowany. Dane wejsciowe narzedzia: $ARGUMENTS\n\n**Krok 1 - filtruj plik**\nWyodrebnij `file_path` z `tool_input`. Jesli plik NIE ma rozszerzenia `.ts`, `.tsx`, `.js` lub `.jsx` - zakoncz natychmiast bez zadnego dzialania.\n\n**Krok 2 - wczytaj plik**\nPrzeczytaj pelna zawartosc pliku.\n\n**Krok 3 - analiza dlugu technicznego**\nOcen plik pod katem ponizszych problemow:\n- **Typy**: uzycie `any`, brakujace typy zwracane funkcji, nieuzasadnione castowanie\n- **Martwy kod**: nieuzywane importy, zmienne, funkcje zadeklarowane lecz nigdzie niekontrolowane\n- **Duplikacja**: powtarzajace sie bloki logiki ktore mozna wyekstrahowac\n- **Dlugosc funkcji**: funkcje >40 linii - czy da sie podzielic bez zmiany logiki?\n- **Nazewnictwo**: skroty (np. `e`, `tmp`, `data`) zamiast opisowych nazw\n- **Obsluga bledow**: `async` funkcje bez `try/catch` lub bez propagowania bledu\n- **Zlozonosc**: zagniezdzone trojniki, magiczne stringi/liczby bez stalych\n- **React/Next.js**: efekty z brakujacymi zaleznosociami, props przekazywane 3+ poziomy w dol (rozważ kontekst)\n\n**Krok 4 - zastosuj poprawki**\nUzyj narzedzia Edit aby zastosowac wylacznie:\n- Bezpieczne, nienaruszajace logiki zmiany\n- Usuniecie martwego kodu\n- Dodanie brakujacych typow TypeScript\n- Wyekstrahowanie stalych dla magicznych wartosci\n- Poprawe nazewnictwa (tylko gdy jest jednoznacznie mylace)\n\nNIE zmieniaj: architektury komponentow, logiki biznesowej, struktury API, stylow.\n\n**Krok 5 - raport**\nZakoncz raportem w formacie:\n[OK] nazwa_pliku\n- co poprawiono #1\n- co poprawiono #2\n\nLub `[OK] nazwa_pliku - brak problemow` jesli plik jest czysty."
+          }
+        ]
+      }
+    ]
+  }
+}
