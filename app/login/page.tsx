@@ -41,12 +41,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8" style={{ backgroundColor: '#f5f5f5' }}>
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-background">
       <Card className="w-full max-w-md border-border shadow-sm">
         <CardHeader className="text-center space-y-2 pb-4">
-          <h1 className="text-2xl font-bold text-foreground">TaskApp</h1>
+          <h1 className="text-2xl font-bold text-foreground">Brain Dump</h1>
           <p className="text-sm text-muted-foreground">
-            Ogarnij wszystko. Zacznij od jednego kliknięcia.
+            Wyrzuć myśli z głowy. Zacznij działać.
           </p>
         </CardHeader>
         
