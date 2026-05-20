@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 import { SessionProvider } from "@/components/session-provider";
 import "./globals.css";
 
@@ -43,7 +42,6 @@ export default function RootLayout({
         <SessionProvider>
           {children}
         </SessionProvider>
-        {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>
   );
