@@ -293,15 +293,6 @@ export default function CalendarPage() {
                       ))}
                     </div>
                   </div>
-                  {selectedItem.data.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {selectedItem.data.tags.map((tag) => (
-                        <Badge key={tag} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
                 </>
               ) : (
                 <>

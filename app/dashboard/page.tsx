@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { TopNavbar } from "@/components/top-navbar";
 import { BottomNav } from "@/components/bottom-nav";
 import { TaskCard } from "@/components/task-card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AlertCircle } from "lucide-react";
 import type { TaskWithCategory, ExamWithSessions } from "@/types";
 
 function getTodayStr() {
@@ -14,16 +17,23 @@ function getTodayStr() {
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<TaskWithCategory[]>([]);
   const [exams, setExams] = useState<ExamWithSessions[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const [tasksRes, examsRes] = await Promise.all([
-      fetch("/api/tasks"),
-      fetch("/api/exams"),
-    ]);
-    if (tasksRes.ok) setTasks(await tasksRes.json());
-    if (examsRes.ok) setExams(await examsRes.json());
-    setLoading(false);
+    try {
+      const [tasksRes, examsRes] = await Promise.all([
+        fetch("/api/tasks"),
+        fetch("/api/exams"),
+      ]);
+      if (!tasksRes.ok || !examsRes.ok) throw new Error();
+      setTasks(await tasksRes.json());
+      setExams(await examsRes.json());
+    } catch {
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -39,6 +49,9 @@ export default function DashboardPage() {
     if (res.ok) {
       const updated: TaskWithCategory = await res.json();
       setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      toast.success(completed ? "Zadanie ukończone!" : "Zadanie przywrócone");
+    } else {
+      toast.error("Nie udało się zaktualizować zadania");
     }
   };
 
@@ -59,10 +72,51 @@ export default function DashboardPage() {
     })
     .slice(0, 3);
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Ładowanie…</p>
+      <div className="min-h-screen bg-background pb-20 md:pb-6">
+        <TopNavbar />
+        <main className="max-w-4xl mx-auto px-4 py-6 space-y-8">
+          <div className="space-y-3">
+            <Skeleton className="h-6 w-48" />
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-start gap-3 p-4 rounded-lg border border-border bg-card">
+                <Skeleton className="w-4 h-4 rounded mt-0.5 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-3 w-16 rounded-full" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-background pb-20 md:pb-6">
+        <TopNavbar />
+        <main className="max-w-4xl mx-auto px-4 py-6">
+          <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+            <AlertCircle className="w-10 h-10 text-destructive" />
+            <p className="text-sm text-muted-foreground">
+              Nie udało się załadować danych.{" "}
+              <button
+                onClick={() => { setIsError(false); setIsLoading(true); fetchData(); }}
+                className="text-primary underline"
+              >
+                Spróbuj ponownie
+              </button>
+            </p>
+          </div>
+        </main>
+        <BottomNav />
       </div>
     );
   }
@@ -88,7 +142,6 @@ export default function DashboardPage() {
                     deadline: task.deadline ? new Date(task.deadline) : new Date(),
                     priority: task.priority,
                     categoryId: task.categoryId ?? "osobiste",
-                    tags: task.tags,
                     completed: task.done,
                     syncWithGoogle: !!task.googleEventId,
                   }}

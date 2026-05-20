@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Brak autoryzacji" }, { status: 401 });
   }
 
-  const body = (await req.json()) as { tasks: { title: string; deadline?: string }[] };
+  const body = (await req.json()) as { tasks: { id: string; title: string; deadline?: string }[] };
   if (!body.tasks?.length) {
     return NextResponse.json({ error: "Brak zadań do priorytetyzacji" }, { status: 400 });
   }

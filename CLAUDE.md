@@ -129,7 +129,8 @@ npm run dev
 
 | Zmienna | Opis |
 |---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
+| `DATABASE_URL` | PostgreSQL pooled connection string (runtime, Supabase: port 6543) |
+| `DIRECT_URL` | PostgreSQL direct connection string (Prisma CLI / migracje, Supabase: port 5432) |
 | `NEXTAUTH_SECRET` | Losowy string ≥32 znaki |
 | `NEXTAUTH_URL` | `http://localhost:3000` (dev) lub domena prod |
 | `GOOGLE_CLIENT_ID` | OAuth 2.0 client ID |

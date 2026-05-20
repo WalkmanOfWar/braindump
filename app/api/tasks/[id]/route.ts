@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteCalendarEvent } from "@/lib/google-calendar";
-import type { TaskUpdateInput } from "@/types";
+import { TaskUpdateSchema } from "@/lib/schemas";
 
 async function getTaskOrFail(id: string, userId: string) {
   const task = await prisma.task.findFirst({ where: { id, userId } });
@@ -44,21 +44,25 @@ export async function PATCH(
     return NextResponse.json({ error: "Nie znaleziono zadania" }, { status: 404 });
   }
 
-  const body = (await req.json()) as TaskUpdateInput;
+  const parsed = TaskUpdateSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Nieprawidłowe dane" },
+      { status: 400 }
+    );
+  }
+
+  const { title, description, deadline, priority, categoryId, done } = parsed.data;
+
   const task = await prisma.task.update({
     where: { id },
     data: {
-      ...(body.title !== undefined ? { title: body.title.trim() } : {}),
-      ...(body.description !== undefined ? { description: body.description } : {}),
-      ...(body.deadline !== undefined
-        ? { deadline: body.deadline ? new Date(body.deadline) : null }
-        : {}),
-      ...(body.priority !== undefined ? { priority: body.priority } : {}),
-      ...(body.tags !== undefined ? { tags: body.tags } : {}),
-      ...(body.categoryId !== undefined ? { categoryId: body.categoryId } : {}),
-      ...(body.done !== undefined
-        ? { done: body.done, doneAt: body.done ? new Date() : null }
-        : {}),
+      ...(title !== undefined ? { title: title.trim() } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(deadline !== undefined ? { deadline: deadline ? new Date(deadline) : null } : {}),
+      ...(priority !== undefined ? { priority } : {}),
+      ...(categoryId !== undefined ? { categoryId } : {}),
+      ...(done !== undefined ? { done, doneAt: done ? new Date() : null } : {}),
     },
     include: { category: true },
   });

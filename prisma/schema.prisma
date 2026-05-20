@@ -7,12 +7,14 @@ datasource db {
 }
 
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  name         String?
-  image        String?
-  googleTokens Json?
-  createdAt    DateTime   @default(now())
+  id            String     @id @default(cuid())
+  email         String     @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  password      String?
+  googleTokens  Json?
+  createdAt     DateTime   @default(now())
   tasks        Task[]
   exams        Exam[]
   categories   Category[]
@@ -23,6 +25,7 @@ model User {
 model Account {
   id                String  @id @default(cuid())
   userId            String
+  type              String
   provider          String
   providerAccountId String
   access_token      String?
@@ -31,6 +34,7 @@ model Account {
   token_type        String?
   scope             String?
   id_token          String?
+  session_state     String?
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
@@ -70,7 +74,6 @@ model Task {
   priority      Int       @default(3)
   done          Boolean   @default(false)
   doneAt        DateTime?
-  tags          String[]
   googleEventId String?
   userId        String
   categoryId    String?

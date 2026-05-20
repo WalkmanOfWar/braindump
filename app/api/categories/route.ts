@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import type { CategoryCreateInput } from "@/types";
+import { CategoryCreateSchema } from "@/lib/schemas";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -23,15 +23,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Brak autoryzacji" }, { status: 401 });
   }
 
-  const body = (await req.json()) as CategoryCreateInput;
-  if (!body.name?.trim()) {
-    return NextResponse.json({ error: "Nazwa kategorii jest wymagana" }, { status: 400 });
+  const parsed = CategoryCreateSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Nieprawidłowe dane" },
+      { status: 400 }
+    );
   }
+
+  const { name, color } = parsed.data;
 
   const category = await prisma.category.create({
     data: {
-      name: body.name.trim(),
-      color: body.color ?? "#888888",
+      name: name.trim(),
+      color,
       userId: session.user.id,
     },
   });

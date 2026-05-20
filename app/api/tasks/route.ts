@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import type { TaskCreateInput } from "@/types";
+import { TaskCreateSchema } from "@/lib/schemas";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -33,19 +33,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Brak autoryzacji" }, { status: 401 });
   }
 
-  const body = (await req.json()) as TaskCreateInput;
-  if (!body.title?.trim()) {
-    return NextResponse.json({ error: "Tytuł jest wymagany" }, { status: 400 });
+  const parsed = TaskCreateSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Nieprawidłowe dane" },
+      { status: 400 }
+    );
   }
+
+  const { title, description, deadline, priority, categoryId } = parsed.data;
 
   const task = await prisma.task.create({
     data: {
-      title: body.title.trim(),
-      description: body.description,
-      deadline: body.deadline ? new Date(body.deadline) : null,
-      priority: body.priority ?? 3,
-      tags: body.tags ?? [],
-      categoryId: body.categoryId ?? null,
+      title: title.trim(),
+      description,
+      deadline: deadline ? new Date(deadline) : null,
+      priority,
+      categoryId: categoryId ?? null,
       userId: session.user.id,
     },
     include: { category: true },
