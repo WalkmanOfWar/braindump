@@ -100,7 +100,7 @@ export function ExamModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[450px] max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Dodaj egzamin</DialogTitle>
         </DialogHeader>

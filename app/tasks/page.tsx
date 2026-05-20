@@ -6,6 +6,8 @@ import { BottomNav } from "@/components/bottom-nav";
 import { TaskCard } from "@/components/task-card";
 import { TaskModal } from "@/components/task-modal";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -14,14 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, ClipboardList, Sparkles } from "lucide-react";
-import type { TaskWithCategory, Category } from "@/types";
-import type { Task } from "@/lib/mock-data";
+import { Plus, ClipboardList, Sparkles, Search, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+import type { TaskWithCategory, Category, UiTask } from "@/types";
 
 type FilterTab = "all" | "active" | "completed";
 type SortOption = "deadline" | "priority";
 
-function toUiTask(t: TaskWithCategory): Task {
+function toUiTask(t: TaskWithCategory): UiTask {
   return {
     id: t.id,
     title: t.title,
@@ -29,36 +31,58 @@ function toUiTask(t: TaskWithCategory): Task {
     deadline: t.deadline ? new Date(t.deadline) : new Date(),
     priority: t.priority,
     categoryId: t.categoryId ?? "osobiste",
-    tags: t.tags,
     completed: t.done,
     syncWithGoogle: !!t.googleEventId,
   };
 }
 
+function TaskSkeleton() {
+  return (
+    <div className="flex items-start gap-3 p-4 rounded-lg border border-border bg-card">
+      <Skeleton className="w-4 h-4 rounded mt-0.5 shrink-0" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-3/4" />
+        <div className="flex gap-2">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-16 rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TasksPage() {
   const [tasks, setTasks] = useState<TaskWithCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("deadline");
+  const [searchQuery, setSearchQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<UiTask | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
   const fetchTasks = useCallback(async () => {
-    const res = await fetch("/api/tasks");
-    if (res.ok) setTasks(await res.json());
-  }, []);
-
-  const fetchCategories = useCallback(async () => {
-    const res = await fetch("/api/categories");
-    if (res.ok) setCategories(await res.json());
+    try {
+      const [tasksRes, catsRes] = await Promise.all([
+        fetch("/api/tasks"),
+        fetch("/api/categories"),
+      ]);
+      if (!tasksRes.ok || !catsRes.ok) throw new Error();
+      setTasks(await tasksRes.json());
+      setCategories(await catsRes.json());
+    } catch {
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     fetchTasks();
-    fetchCategories();
-  }, [fetchTasks, fetchCategories]);
+  }, [fetchTasks]);
 
   const filtered = tasks
     .filter((t) => {
@@ -69,6 +93,14 @@ export default function TasksPage() {
     .filter((t) =>
       categoryFilter === "all" ? true : t.categoryId === categoryFilter
     )
+    .filter((t) => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        t.title.toLowerCase().includes(q) ||
+        (t.description ?? "").toLowerCase().includes(q)
+      );
+    })
     .sort((a, b) => {
       if (sortBy === "deadline") {
         const dA = a.deadline ? new Date(a.deadline).getTime() : Infinity;
@@ -87,20 +119,28 @@ export default function TasksPage() {
     if (res.ok) {
       const updated: TaskWithCategory = await res.json();
       setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      toast.success(completed ? "Zadanie ukończone!" : "Zadanie przywrócone");
+    } else {
+      toast.error("Nie udało się zaktualizować zadania");
     }
   };
 
-  const handleEdit = (task: Task) => {
+  const handleEdit = (task: UiTask) => {
     setEditingTask(task);
     setModalOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
-    if (res.ok) setTasks((prev) => prev.filter((t) => t.id !== id));
+    if (res.ok) {
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+      toast.success("Zadanie usunięte");
+    } else {
+      toast.error("Nie udało się usunąć zadania");
+    }
   };
 
-  const handleSave = async (taskData: Partial<Task>) => {
+  const handleSave = async (taskData: Partial<UiTask>) => {
     if (taskData.id) {
       const res = await fetch(`/api/tasks/${taskData.id}`, {
         method: "PATCH",
@@ -110,15 +150,15 @@ export default function TasksPage() {
           description: taskData.description,
           deadline: taskData.deadline?.toISOString(),
           priority: taskData.priority,
-          tags: taskData.tags,
           categoryId: taskData.categoryId || null,
         }),
       });
       if (res.ok) {
         const updated: TaskWithCategory = await res.json();
-        setTasks((prev) =>
-          prev.map((t) => (t.id === taskData.id ? updated : t))
-        );
+        setTasks((prev) => prev.map((t) => (t.id === taskData.id ? updated : t)));
+        toast.success("Zadanie zaktualizowane");
+      } else {
+        toast.error("Nie udało się zaktualizować zadania");
       }
     } else {
       const res = await fetch("/api/tasks", {
@@ -129,13 +169,13 @@ export default function TasksPage() {
           description: taskData.description,
           deadline: taskData.deadline?.toISOString(),
           priority: taskData.priority,
-          tags: taskData.tags,
           categoryId: taskData.categoryId || null,
         }),
       });
       if (res.ok) {
         const created: TaskWithCategory = await res.json();
         setTasks((prev) => [...prev, created]);
+        toast.success("Zadanie dodane!");
         if (taskData.syncWithGoogle && created.deadline) {
           await fetch("/api/calendar/sync", {
             method: "POST",
@@ -143,6 +183,8 @@ export default function TasksPage() {
             body: JSON.stringify({ type: "task", id: created.id, action: "create" }),
           });
         }
+      } else {
+        toast.error("Nie udało się dodać zadania");
       }
     }
     setEditingTask(null);
@@ -157,16 +199,17 @@ export default function TasksPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tasks: activeTasks.map((t) => ({
+          id: t.id,
           title: t.title,
           deadline: t.deadline ? new Date(t.deadline).toISOString() : undefined,
         })),
       }),
     });
     if (res.ok) {
-      const priorities: { title: string; priority: number }[] = await res.json();
+      const priorities: { id: string; priority: number }[] = await res.json();
       const updates = await Promise.all(
         priorities.map(async (p) => {
-          const task = activeTasks.find((t) => t.title === p.title);
+          const task = activeTasks.find((t) => t.id === p.id);
           if (!task) return null;
           const r = await fetch(`/api/tasks/${task.id}`, {
             method: "PATCH",
@@ -183,6 +226,9 @@ export default function TasksPage() {
           return updated ?? t;
         })
       );
+      toast.success("Priorytety zaktualizowane przez AI");
+    } else {
+      toast.error("Błąd AI — spróbuj ponownie");
     }
     setAiLoading(false);
   };
@@ -199,7 +245,7 @@ export default function TasksPage() {
               variant="outline"
               size="sm"
               onClick={handleAIPrioritize}
-              disabled={aiLoading}
+              disabled={aiLoading || isLoading}
               title="Posortuj przez AI"
             >
               <Sparkles className="h-4 w-4 mr-1" />
@@ -213,6 +259,17 @@ export default function TasksPage() {
               Dodaj zadanie
             </Button>
           </div>
+        </div>
+
+        {/* Search */}
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Szukaj zadań…"
+            className="pl-9"
+          />
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -264,7 +321,24 @@ export default function TasksPage() {
           </div>
         </div>
 
-        {filtered.length > 0 ? (
+        {isLoading ? (
+          <div className="space-y-2">
+            {[...Array(4)].map((_, i) => <TaskSkeleton key={i} />)}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+            <AlertCircle className="w-10 h-10 text-destructive" />
+            <p className="text-sm text-muted-foreground">
+              Nie udało się załadować zadań.{" "}
+              <button
+                onClick={() => { setIsError(false); setIsLoading(true); fetchTasks(); }}
+                className="text-primary underline"
+              >
+                Spróbuj ponownie
+              </button>
+            </p>
+          </div>
+        ) : filtered.length > 0 ? (
           <div className="space-y-2">
             {filtered.map((task) => (
               <TaskCard
@@ -282,17 +356,23 @@ export default function TasksPage() {
             <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-4">
               <ClipboardList className="w-10 h-10 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-medium text-foreground mb-2">Brak zadań</h3>
+            <h3 className="text-lg font-medium text-foreground mb-2">
+              {searchQuery ? "Brak wyników" : "Brak zadań"}
+            </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Dodaj pierwsze zadanie!
+              {searchQuery
+                ? `Nie znaleziono zadań pasujących do "${searchQuery}"`
+                : "Dodaj pierwsze zadanie!"}
             </p>
-            <Button
-              onClick={() => { setEditingTask(null); setModalOpen(true); }}
-              className="bg-accent text-accent-foreground hover:bg-accent/90"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Dodaj zadanie
-            </Button>
+            {!searchQuery && (
+              <Button
+                onClick={() => { setEditingTask(null); setModalOpen(true); }}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Dodaj zadanie
+              </Button>
+            )}
           </div>
         )}
       </main>
@@ -305,6 +385,7 @@ export default function TasksPage() {
         task={editingTask}
         categories={categories}
         onSave={handleSave}
+        onCategoryCreated={(cat) => setCategories((prev) => [...prev, cat])}
       />
     </div>
   );

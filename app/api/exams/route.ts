@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateSessions } from "@/lib/study-planner";
-import type { ExamCreateInput } from "@/types";
+import { ExamCreateSchema } from "@/lib/schemas";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -25,23 +25,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Brak autoryzacji" }, { status: 401 });
   }
 
-  const body = (await req.json()) as ExamCreateInput;
-  if (!body.title?.trim() || !body.examDate) {
+  const parsed = ExamCreateSchema.safeParse(await req.json());
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Tytuł i data egzaminu są wymagane" },
+      { error: parsed.error.issues[0]?.message ?? "Nieprawidłowe dane" },
       { status: 400 }
     );
   }
 
-  const examDate = new Date(body.examDate);
-  const sessions = generateSessions(examDate, body.dailyHours ?? 1, body.topics);
+  const { title, examDate, dailyHours, topics, categoryId } = parsed.data;
+  const examDateObj = new Date(examDate);
+  const sessions = generateSessions(examDateObj, dailyHours, topics);
 
   const exam = await prisma.exam.create({
     data: {
-      title: body.title.trim(),
-      examDate,
-      dailyHours: body.dailyHours ?? 1,
-      categoryId: body.categoryId ?? null,
+      title: title.trim(),
+      examDate: examDateObj,
+      dailyHours,
+      categoryId: categoryId ?? null,
       userId: session.user.id,
       studySessions: {
         create: sessions.map((s) => ({

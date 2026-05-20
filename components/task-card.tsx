@@ -12,7 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Pencil, Trash2, Calendar } from 'lucide-react'
-import { Task, getCategoryById, getUrgencyLevel, getUrgencyColor, formatDate } from '@/lib/mock-data'
+import type { UiTask } from '@/types'
+import { getUrgencyLevel, getUrgencyColor, formatDate } from '@/lib/utils'
 
 interface CategoryInfo {
   name: string
@@ -20,11 +21,11 @@ interface CategoryInfo {
 }
 
 interface TaskCardProps {
-  task: Task
+  task: UiTask
   variant?: 'default' | 'highlighted'
   categoryOverride?: CategoryInfo | null
   onToggleComplete?: (id: string, completed: boolean) => void
-  onEdit?: (task: Task) => void
+  onEdit?: (task: UiTask) => void
   onDelete?: (id: string) => void
 }
 
@@ -37,7 +38,7 @@ export function TaskCard({
   onDelete,
 }: TaskCardProps) {
   const [isCompleted, setIsCompleted] = useState(task.completed)
-  const category = categoryOverride !== undefined ? categoryOverride : getCategoryById(task.categoryId)
+  const category = categoryOverride ?? null
   const urgencyLevel = getUrgencyLevel(task.deadline)
   const urgencyColor = getUrgencyColor(urgencyLevel)
 

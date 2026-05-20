@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "@/components/session-provider";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,6 +18,12 @@ export const metadata: Metadata = {
   description:
     "Aplikacja do zarządzania zadaniami i nauką. Wyrzuć myśli z głowy i zacznij działać.",
   generator: "v0.app",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Brain Dump",
+  },
   icons: {
     icon: [
       { url: "/icon-light-32x32.png", media: "(prefers-color-scheme: light)" },
@@ -41,6 +48,7 @@ export default function RootLayout({
       <body className="font-sans antialiased bg-background">
         <SessionProvider>
           {children}
+          <Toaster richColors position="bottom-right" />
         </SessionProvider>
       </body>
     </html>

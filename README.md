@@ -1,35 +1,70 @@
-# taskapp
+# Brain Dump
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+Aplikacja webowa (PWA) do zarządzania zadaniami i sesjami nauki. Pomaga ogarnąć dużo zadań naraz, nie zapominać o deadlinach i planować naukę przed egzaminami.
 
-## Built with v0
+## Funkcje
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+- **Zadania** — dodawanie, edycja, filtrowanie, priorytety, kategorie, tagi
+- **AI ad-hoc** — wpisz zadanie jednym zdaniem po polsku, AI uzupełni resztę formularza
+- **AI priorytetyzacja** — automatyczne ustawianie priorytetów na liście zadań
+- **Egzaminy** — generowanie planu sesji nauki na podstawie daty egzaminu
+- **Kalendarz** — widok tygodniowy zadań i sesji nauki
+- **Google Calendar sync** — synchronizacja zadań z Google Calendar
+- **Logowanie** — Google OAuth, GitHub, Facebook, email+hasło
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_eGldmKyrwgOzLQDGmKh8RzAFW1XN)
+## Stos technologiczny
 
-## Getting Started
+| Warstwa | Technologia |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Język | TypeScript |
+| Style | Tailwind CSS + shadcn/ui |
+| Baza danych | PostgreSQL + Prisma ORM |
+| Auth | NextAuth.js v4 |
+| AI | Anthropic Claude API (`claude-sonnet-4-6`) |
+| Kalendarz | Google Calendar API |
+| Email | Nodemailer |
+| Hosting | Vercel + Supabase |
 
-First, run the development server:
+## Uruchomienie
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Uzupełnij `.env.local`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+DATABASE_URL=postgresql://...      # pooled connection (runtime)
+DIRECT_URL=postgresql://...        # direct connection (Prisma CLI / migracje)
+NEXTAUTH_SECRET=losowy-string-min-32-znaki
+NEXTAUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+ANTHROPIC_API_KEY=...              # opcjonalne — AI
+SMTP_HOST=...                      # opcjonalne — email
+```
 
-## Learn More
+> **Supabase:** `DATABASE_URL` to adres przez Transaction Pooler (port 6543), `DIRECT_URL` to adres bezpośredni (port 5432). Oba znajdziesz w panelu Supabase → Settings → Database.
 
-To learn more, take a look at the following resources:
+```bash
+npx prisma db push
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+Otwórz [http://localhost:3000](http://localhost:3000).
 
-<a href="https://v0.app/chat/api/kiro/clone/WalkmanOfWar/taskapp" alt="Open in Kiro"><img src="https://pdgvvgmkdvyeydso.public.blob.vercel-storage.com/open%20in%20kiro.svg?sanitize=true" /></a>
+## Struktura projektu
+
+```
+app/
+├── dashboard/        ← TOP 3 zadania + sesje nauki na dziś
+├── tasks/            ← lista zadań z filtrowaniem + AI
+├── exams/            ← egzaminy + plan nauki
+├── calendar/         ← widok tygodniowy
+└── api/              ← REST API (tasks, exams, categories, ai, calendar)
+
+components/           ← task-modal, exam-modal, task-card, nawigacja
+lib/                  ← prisma, auth, claude, study-planner, google-calendar
+prisma/schema.prisma  ← schemat bazy danych
+```

@@ -2,6 +2,17 @@ import type { Task, Exam, StudySession, Category } from "@prisma/client";
 
 export type { Task, Exam, StudySession, Category };
 
+export type UiTask = {
+  id: string;
+  title: string;
+  description?: string;
+  deadline: Date;
+  priority: number;
+  categoryId: string;
+  completed: boolean;
+  syncWithGoogle: boolean;
+};
+
 export type TaskWithCategory = Task & {
   category: Category | null;
 };
@@ -16,7 +27,6 @@ export type TaskCreateInput = {
   description?: string;
   deadline?: string;
   priority?: number;
-  tags?: string[];
   categoryId?: string;
 };
 
