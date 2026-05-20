@@ -14,23 +14,30 @@ import {
 import { MoreHorizontal, Pencil, Trash2, Calendar } from 'lucide-react'
 import { Task, getCategoryById, getUrgencyLevel, getUrgencyColor, formatDate } from '@/lib/mock-data'
 
+interface CategoryInfo {
+  name: string
+  color: string
+}
+
 interface TaskCardProps {
   task: Task
   variant?: 'default' | 'highlighted'
+  categoryOverride?: CategoryInfo | null
   onToggleComplete?: (id: string, completed: boolean) => void
   onEdit?: (task: Task) => void
   onDelete?: (id: string) => void
 }
 
-export function TaskCard({ 
-  task, 
+export function TaskCard({
+  task,
   variant = 'default',
+  categoryOverride,
   onToggleComplete,
   onEdit,
   onDelete,
 }: TaskCardProps) {
   const [isCompleted, setIsCompleted] = useState(task.completed)
-  const category = getCategoryById(task.categoryId)
+  const category = categoryOverride !== undefined ? categoryOverride : getCategoryById(task.categoryId)
   const urgencyLevel = getUrgencyLevel(task.deadline)
   const urgencyColor = getUrgencyColor(urgencyLevel)
 

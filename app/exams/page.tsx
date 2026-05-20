@@ -1,82 +1,80 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { TopNavbar } from '@/components/top-navbar'
-import { BottomNav } from '@/components/bottom-nav'
-import { ExamCard } from '@/components/exam-card'
-import { ExamModal } from '@/components/exam-modal'
-import { Button } from '@/components/ui/button'
-import { Plus, GraduationCap } from 'lucide-react'
-import { exams as initialExams, Exam, StudySession } from '@/lib/mock-data'
+import { useState, useEffect, useCallback } from "react";
+import { TopNavbar } from "@/components/top-navbar";
+import { BottomNav } from "@/components/bottom-nav";
+import { ExamCard } from "@/components/exam-card";
+import { ExamModal } from "@/components/exam-modal";
+import { Button } from "@/components/ui/button";
+import { Plus, GraduationCap } from "lucide-react";
+import type { ExamWithSessions } from "@/types";
+import type { Category } from "@/types";
 
 export default function ExamsPage() {
-  const [allExams, setAllExams] = useState<Exam[]>(initialExams)
-  const [modalOpen, setModalOpen] = useState(false)
+  const [exams, setExams] = useState<ExamWithSessions[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleToggleSession = (examId: string, sessionId: string, completed: boolean) => {
-    setAllExams(prev => 
-      prev.map(exam => {
-        if (exam.id !== examId) return exam
-        return {
-          ...exam,
-          sessions: exam.sessions.map(session =>
-            session.id === sessionId ? { ...session, completed } : session
-          )
-        }
-      })
-    )
-  }
+  const fetchData = useCallback(async () => {
+    const [examsRes, catsRes] = await Promise.all([
+      fetch("/api/exams"),
+      fetch("/api/categories"),
+    ]);
+    if (examsRes.ok) setExams(await examsRes.json());
+    if (catsRes.ok) setCategories(await catsRes.json());
+    setLoading(false);
+  }, []);
 
-  const handleSaveExam = (examData: Partial<Exam>) => {
-    const now = new Date()
-    const examDate = examData.examDate || new Date()
-    const daysUntil = Math.ceil((examDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    
-    // Generate mock sessions
-    const topics = [
-      'Wprowadzenie i podstawy',
-      'Teoria i definicje',
-      'Ćwiczenia praktyczne',
-      'Zagadnienia zaawansowane',
-      'Powtórka całości',
-    ]
-    
-    const sessions: StudySession[] = []
-    for (let i = 0; i < Math.min(daysUntil, topics.length); i++) {
-      const sessionDate = new Date(now)
-      sessionDate.setDate(sessionDate.getDate() + i)
-      
-      sessions.push({
-        id: `new-session-${Date.now()}-${i}`,
-        examId: `exam-${Date.now()}`,
-        date: sessionDate,
-        topic: topics[i],
-        hours: examData.hoursPerDay || 1,
-        completed: false,
-      })
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleToggleSession = async (
+    examId: string,
+    sessionId: string,
+    done: boolean
+  ) => {
+    const res = await fetch(`/api/exams/${examId}/sessions`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, done }),
+    });
+    if (res.ok) {
+      setExams((prev) =>
+        prev.map((exam) => {
+          if (exam.id !== examId) return exam;
+          return {
+            ...exam,
+            studySessions: exam.studySessions.map((s) =>
+              s.id === sessionId ? { ...s, done } : s
+            ),
+          };
+        })
+      );
     }
+  };
 
-    const newExam: Exam = {
-      id: `exam-${Date.now()}`,
-      title: examData.title || 'Nowy egzamin',
-      examDate: examData.examDate || new Date(),
-      hoursPerDay: examData.hoursPerDay || 1,
-      categoryId: examData.categoryId || 'nauka',
-      sessions,
-    }
+  const handleSaveExam = (exam: ExamWithSessions) => {
+    setExams((prev) => [...prev, exam]);
+  };
 
-    setAllExams(prev => [...prev, newExam])
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">Ładowanie…</p>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-6">
       <TopNavbar />
-      
+
       <main className="max-w-4xl mx-auto px-4 py-6">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-foreground">Egzaminy</h1>
-          <Button 
+          <Button
             onClick={() => setModalOpen(true)}
             className="bg-accent text-accent-foreground hover:bg-accent/90"
           >
@@ -85,11 +83,10 @@ export default function ExamsPage() {
           </Button>
         </div>
 
-        {/* Exam List */}
-        {allExams.length > 0 ? (
+        {exams.length > 0 ? (
           <div className="space-y-4">
-            {allExams.map((exam) => (
-              <ExamCard 
+            {exams.map((exam) => (
+              <ExamCard
                 key={exam.id}
                 exam={exam}
                 onToggleSession={handleToggleSession}
@@ -107,7 +104,7 @@ export default function ExamsPage() {
             <p className="text-sm text-muted-foreground mb-4">
               Dodaj egzamin i wygeneruj plan nauki!
             </p>
-            <Button 
+            <Button
               onClick={() => setModalOpen(true)}
               className="bg-accent text-accent-foreground hover:bg-accent/90"
             >
@@ -120,11 +117,12 @@ export default function ExamsPage() {
 
       <BottomNav />
 
-      <ExamModal 
+      <ExamModal
         open={modalOpen}
         onOpenChange={setModalOpen}
+        categories={categories}
         onSave={handleSaveExam}
       />
     </div>
-  )
+  );
 }
