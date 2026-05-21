@@ -256,6 +256,34 @@ export function TaskModal({
           {/* Deadline */}
           <div className="space-y-2">
             <Label htmlFor="deadline">Termin</Label>
+            <div className="flex gap-1.5 flex-wrap">
+              {[
+                { label: 'Dziś', days: 0 },
+                { label: 'Jutro', days: 1 },
+                { label: 'Za 3 dni', days: 3 },
+                { label: 'Za tydzień', days: 7 },
+              ].map(({ label, days }) => {
+                const d = new Date()
+                d.setDate(d.getDate() + days)
+                d.setHours(23, 59, 0, 0)
+                const val = d.toISOString().slice(0, 16)
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setDeadline(val)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-md text-xs border transition-colors',
+                      deadline === val
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
+                    )}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
             <Input
               id="deadline"
               type="datetime-local"

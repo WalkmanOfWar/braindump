@@ -38,6 +38,9 @@ interface TaskCardProps {
   onEdit?: (task: UiTask) => void
   onDelete?: (id: string) => void
   onSyncCalendar?: (id: string, action: 'create' | 'delete') => Promise<void>
+  selectionMode?: boolean
+  selected?: boolean
+  onSelect?: (id: string) => void
 }
 
 export function TaskCard({
@@ -48,6 +51,9 @@ export function TaskCard({
   onEdit,
   onDelete,
   onSyncCalendar,
+  selectionMode = false,
+  selected = false,
+  onSelect,
 }: TaskCardProps) {
   const [isCompleted, setIsCompleted] = useState(task.completed)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -58,6 +64,10 @@ export function TaskCard({
   const isOverdue = !isCompleted && task.deadline < new Date()
 
   const handleToggle = () => {
+    if (selectionMode) {
+      onSelect?.(task.id)
+      return
+    }
     const newValue = !isCompleted
     setIsCompleted(newValue)
     onToggleComplete?.(task.id, newValue)
@@ -72,13 +82,15 @@ export function TaskCard({
         'flex items-start gap-3 p-4 rounded-lg border transition-all',
         isHighlighted
           ? 'bg-primary text-primary-foreground border-primary shadow-lg'
-          : isOverdue
-            ? 'bg-destructive/5 border-destructive/40 border-l-4 border-l-destructive hover:shadow-sm'
-            : 'bg-card border-border hover:border-muted-foreground/30 hover:shadow-sm'
+          : selected
+            ? 'bg-primary/5 border-primary ring-1 ring-primary/40'
+            : isOverdue
+              ? 'bg-destructive/5 border-destructive/40 border-l-4 border-l-destructive hover:shadow-sm'
+              : 'bg-card border-border hover:border-muted-foreground/30 hover:shadow-sm'
       )}
     >
-      <Checkbox 
-        checked={isCompleted}
+      <Checkbox
+        checked={selectionMode ? selected : isCompleted}
         onCheckedChange={handleToggle}
         className={cn(
           'mt-0.5',
