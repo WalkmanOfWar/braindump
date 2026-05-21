@@ -5,30 +5,50 @@ import { toast } from "sonner";
 import { TopNavbar } from "@/components/top-navbar";
 import { BottomNav } from "@/components/bottom-nav";
 import { TaskCard } from "@/components/task-card";
+import { TaskModal } from "@/components/task-modal";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle } from "lucide-react";
-import type { TaskWithCategory, ExamWithSessions } from "@/types";
+import { AlertCircle, CheckCircle2, ListTodo, BookOpen } from "lucide-react";
+import type { TaskWithCategory, ExamWithSessions, Category, UiTask } from "@/types";
 
 function getTodayStr() {
-  return new Date().toISOString().split("T")[0];
+  return new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD local time
+}
+
+function toUiTask(t: TaskWithCategory): UiTask {
+  return {
+    id: t.id,
+    title: t.title,
+    description: t.description ?? undefined,
+    deadline: t.deadline ? new Date(t.deadline) : new Date(),
+    priority: t.priority,
+    categoryId: t.categoryId ?? "",
+    completed: t.done,
+    syncWithGoogle: !!t.googleEventId,
+  };
 }
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<TaskWithCategory[]>([]);
   const [exams, setExams] = useState<ExamWithSessions[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const [editingTask, setEditingTask] = useState<UiTask | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [tasksRes, examsRes] = await Promise.all([
+      const [tasksRes, examsRes, catsRes] = await Promise.all([
         fetch("/api/tasks"),
         fetch("/api/exams"),
+        fetch("/api/categories"),
       ]);
-      if (!tasksRes.ok || !examsRes.ok) throw new Error();
+      if (!tasksRes.ok || !examsRes.ok || !catsRes.ok) throw new Error();
       setTasks(await tasksRes.json());
       setExams(await examsRes.json());
+      setCategories(await catsRes.json());
     } catch {
       setIsError(true);
     } finally {
@@ -55,11 +75,74 @@ export default function DashboardPage() {
     }
   };
 
+  const handleToggleSession = async (examId: string, sessionId: string, done: boolean) => {
+    const res = await fetch(`/api/exams/${examId}/sessions`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, done }),
+    });
+    if (res.ok) {
+      setExams((prev) =>
+        prev.map((exam) => {
+          if (exam.id !== examId) return exam;
+          return {
+            ...exam,
+            studySessions: exam.studySessions.map((s) =>
+              s.id === sessionId ? { ...s, done } : s
+            ),
+          };
+        })
+      );
+      toast.success(done ? "Sesja ukończona!" : "Sesja przywrócona");
+    } else {
+      toast.error("Nie udało się zaktualizować sesji");
+    }
+  };
+
+  const handleEdit = (task: UiTask) => {
+    setEditingTask(task);
+    setModalOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+      toast.success("Zadanie usunięte");
+    } else {
+      toast.error("Nie udało się usunąć zadania");
+    }
+  };
+
+  const handleSave = async (taskData: Partial<UiTask>) => {
+    if (!taskData.id) return;
+    const res = await fetch(`/api/tasks/${taskData.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: taskData.title,
+        description: taskData.description,
+        deadline: taskData.deadline?.toISOString(),
+        priority: taskData.priority,
+        categoryId: taskData.categoryId || null,
+      }),
+    });
+    if (res.ok) {
+      const updated: TaskWithCategory = await res.json();
+      setTasks((prev) => prev.map((t) => (t.id === taskData.id ? updated : t)));
+      toast.success("Zadanie zaktualizowane");
+    } else {
+      toast.error("Nie udało się zaktualizować zadania");
+    }
+    setEditingTask(null);
+  };
+
   const todayStr = getTodayStr();
+
   const todaySessions = exams.flatMap((exam) =>
-    exam.studySessions.filter(
-      (s) => new Date(s.date).toISOString().split("T")[0] === todayStr
-    ).map((s) => ({ ...s, examTitle: exam.title }))
+    exam.studySessions
+      .filter((s) => new Date(s.date).toLocaleDateString("sv-SE") === todayStr)
+      .map((s) => ({ ...s, examId: exam.id, examTitle: exam.title }))
   );
 
   const top3 = tasks
@@ -72,11 +155,24 @@ export default function DashboardPage() {
     })
     .slice(0, 3);
 
+  // Stats
+  const activeTasks = tasks.filter((t) => !t.done).length;
+  const doneTodayTasks = tasks.filter((t) => {
+    if (!t.done || !t.doneAt) return false;
+    return new Date(t.doneAt).toLocaleDateString("sv-SE") === todayStr;
+  }).length;
+  const doneSessionsToday = todaySessions.filter((s) => s.done).length;
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background pb-20 md:pb-6">
         <TopNavbar />
         <main className="max-w-4xl mx-auto px-4 py-6 space-y-8">
+          <div className="grid grid-cols-3 gap-3">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-20 rounded-xl" />
+            ))}
+          </div>
           <div className="space-y-3">
             <Skeleton className="h-6 w-48" />
             {[...Array(3)].map((_, i) => (
@@ -126,6 +222,38 @@ export default function DashboardPage() {
       <TopNavbar />
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-8">
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <ListTodo className="h-4 w-4" />
+              <span className="text-xs">Aktywne</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{activeTasks}</p>
+            <p className="text-xs text-muted-foreground">zadań do zrobienia</p>
+          </div>
+          <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4" />
+              <span className="text-xs">Dziś</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{doneTodayTasks}</p>
+            <p className="text-xs text-muted-foreground">zadań ukończonych</p>
+          </div>
+          <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <BookOpen className="h-4 w-4" />
+              <span className="text-xs">Nauka</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">
+              {doneSessionsToday}/{todaySessions.length}
+            </p>
+            <p className="text-xs text-muted-foreground">sesji dziś</p>
+          </div>
+        </div>
+
+        {/* Top 3 tasks */}
         <section>
           <h2 className="text-lg font-semibold text-foreground mb-4">
             Dziś zacznij od tego
@@ -135,18 +263,12 @@ export default function DashboardPage() {
               {top3.map((task, index) => (
                 <TaskCard
                   key={task.id}
-                  task={{
-                    id: task.id,
-                    title: task.title,
-                    description: task.description ?? undefined,
-                    deadline: task.deadline ? new Date(task.deadline) : new Date(),
-                    priority: task.priority,
-                    categoryId: task.categoryId ?? "osobiste",
-                    completed: task.done,
-                    syncWithGoogle: !!task.googleEventId,
-                  }}
+                  task={toUiTask(task)}
+                  categoryOverride={task.category ?? null}
                   variant={index === 0 ? "highlighted" : "default"}
                   onToggleComplete={handleToggleComplete}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
                 />
               ))}
             </div>
@@ -155,23 +277,33 @@ export default function DashboardPage() {
           )}
         </section>
 
+        {/* Today's study sessions */}
         <section>
           <h2 className="text-lg font-semibold text-foreground mb-4">
             Sesje nauki na dziś
           </h2>
           {todaySessions.length > 0 ? (
-            <div className="flex gap-3 overflow-x-auto pb-2">
+            <div className="space-y-2">
               {todaySessions.map((session) => (
                 <div
                   key={session.id}
-                  className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-full shrink-0 border border-border"
+                  className="flex items-center gap-3 px-4 py-3 bg-card rounded-lg border border-border"
                 >
-                  <span className="text-sm font-medium text-foreground whitespace-nowrap">
-                    {session.examTitle
-                      .replace("Egzamin z ", "")
-                      .replace("Certyfikat ", "")}
-                  </span>
-                  <Badge className="bg-accent text-accent-foreground hover:bg-accent/90 px-2 py-0.5 text-xs">
+                  <Checkbox
+                    checked={session.done}
+                    onCheckedChange={(checked) =>
+                      handleToggleSession(session.examId, session.id, checked as boolean)
+                    }
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground mb-0.5">
+                      {session.examTitle}
+                    </p>
+                    <p className={`text-sm font-medium truncate ${session.done ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                      {session.topic}
+                    </p>
+                  </div>
+                  <Badge className="bg-accent text-accent-foreground hover:bg-accent/90 px-2 py-0.5 text-xs shrink-0">
                     {session.hours}h
                   </Badge>
                 </div>
@@ -184,6 +316,15 @@ export default function DashboardPage() {
       </main>
 
       <BottomNav />
+
+      <TaskModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        task={editingTask}
+        categories={categories}
+        onSave={handleSave}
+        onCategoryCreated={(cat) => setCategories((prev) => [...prev, cat])}
+      />
     </div>
   );
 }

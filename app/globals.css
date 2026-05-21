@@ -87,6 +87,29 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+.dark {
+  --background: #1a1917;
+  --background-subtle: #242220;
+  --foreground: #f5f3ef;
+  --card: #242220;
+  --card-foreground: #f5f3ef;
+  --popover: #2e2b27;
+  --popover-foreground: #f5f3ef;
+  --primary: #9b7dff;
+  --primary-foreground: #ffffff;
+  --secondary: #2e2b27;
+  --secondary-foreground: #f5f3ef;
+  --muted: #2e2b27;
+  --muted-foreground: #a09890;
+  --accent: #9b7dff;
+  --accent-foreground: #ffffff;
+  --destructive: #e55a5a;
+  --destructive-foreground: #ffffff;
+  --border: #3a3733;
+  --input: #3a3733;
+  --ring: #9b7dff;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

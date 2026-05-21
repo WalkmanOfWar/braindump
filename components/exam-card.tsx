@@ -6,12 +6,30 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ChevronDown, ChevronUp, MoreHorizontal, Trash2, Pencil } from "lucide-react";
 import type { ExamWithSessions } from "@/types";
 
 interface ExamCardProps {
   exam: ExamWithSessions;
   onToggleSession: (examId: string, sessionId: string, done: boolean) => void;
+  onDelete?: (examId: string) => void;
+  onEdit?: (exam: ExamWithSessions) => void;
 }
 
 function formatDate(date: Date | string): string {
@@ -26,8 +44,9 @@ function getDaysUntil(date: Date | string): number {
   return Math.ceil((new Date(date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-export function ExamCard({ exam, onToggleSession }: ExamCardProps) {
+export function ExamCard({ exam, onToggleSession, onDelete, onEdit }: ExamCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const daysUntil = getDaysUntil(exam.examDate);
   const category = exam.category;
@@ -62,11 +81,12 @@ export function ExamCard({ exam, onToggleSession }: ExamCardProps) {
   };
 
   return (
+    <>
     <div className="border border-border rounded-lg bg-card overflow-hidden">
       <div className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-foreground mb-1">{exam.title}</h3>
+            <h3 className="font-semibold text-foreground mb-1 pr-8">{exam.title}</h3>
             <p className="text-sm text-muted-foreground mb-2">
               {formatDate(exam.examDate)}
             </p>
@@ -92,6 +112,32 @@ export function ExamCard({ exam, onToggleSession }: ExamCardProps) {
               )}
             </div>
           </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0">
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {onEdit && (
+                <DropdownMenuItem onClick={() => onEdit(exam)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edytuj egzamin
+                </DropdownMenuItem>
+              )}
+              {onDelete && (
+                <DropdownMenuItem
+                  onClick={() => setConfirmDelete(true)}
+                  className="text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Usuń egzamin
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="mt-4">
@@ -177,5 +223,26 @@ export function ExamCard({ exam, onToggleSession }: ExamCardProps) {
         </div>
       )}
     </div>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Usuń egzamin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              „{exam.title}" oraz wszystkie sesje nauki zostaną trwale usunięte. Tej akcji nie można cofnąć.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Anuluj</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => onDelete?.(exam.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Usuń
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
