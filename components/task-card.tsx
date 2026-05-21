@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { MoreHorizontal, Pencil, Trash2, Calendar } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, CalendarPlus, CalendarX2, Loader2 } from 'lucide-react'
 import type { UiTask } from '@/types'
 import { getUrgencyLevel, getUrgencyColor, formatDate } from '@/lib/utils'
 
@@ -37,6 +37,7 @@ interface TaskCardProps {
   onToggleComplete?: (id: string, completed: boolean) => void
   onEdit?: (task: UiTask) => void
   onDelete?: (id: string) => void
+  onSyncCalendar?: (id: string, action: 'create' | 'delete') => Promise<void>
 }
 
 export function TaskCard({
@@ -46,9 +47,11 @@ export function TaskCard({
   onToggleComplete,
   onEdit,
   onDelete,
+  onSyncCalendar,
 }: TaskCardProps) {
   const [isCompleted, setIsCompleted] = useState(task.completed)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const category = categoryOverride ?? null
   const urgencyLevel = getUrgencyLevel(task.deadline)
   const urgencyColor = getUrgencyColor(urgencyLevel)
@@ -114,10 +117,24 @@ export function TaskCard({
                 <Trash2 className="h-4 w-4 mr-2" />
                 Usuń
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Calendar className="h-4 w-4 mr-2" />
-                Sync z Google Calendar
-              </DropdownMenuItem>
+              {onSyncCalendar && (
+                <DropdownMenuItem
+                  disabled={syncing}
+                  onClick={async () => {
+                    setSyncing(true)
+                    await onSyncCalendar(task.id, task.syncWithGoogle ? 'delete' : 'create')
+                    setSyncing(false)
+                  }}
+                >
+                  {syncing
+                    ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    : task.syncWithGoogle
+                      ? <CalendarX2 className="h-4 w-4 mr-2 text-destructive" />
+                      : <CalendarPlus className="h-4 w-4 mr-2" />
+                  }
+                  {task.syncWithGoogle ? 'Usuń z Google Calendar' : 'Dodaj do Google Calendar'}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
