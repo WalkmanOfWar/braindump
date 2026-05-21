@@ -11,7 +11,18 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  Clock,
+  BookOpen,
+  CheckSquare,
+  CheckCircle2,
+  Circle,
+  AlignLeft,
+  Tag,
+} from "lucide-react";
 import type { TaskWithCategory, ExamWithSessions } from "@/types";
 import type { StudySession } from "@prisma/client";
 
@@ -214,10 +225,15 @@ export default function CalendarPage() {
                         <button
                           key={`session-${session.id}-${i}`}
                           onClick={() => { setSelectedItem(item); setSheetOpen(true); }}
-                          className="w-full text-left px-1.5 py-1 rounded text-xs truncate bg-accent text-accent-foreground hover:opacity-80 transition-opacity"
+                          className={cn(
+                            "w-full text-left px-1.5 py-1 rounded text-xs truncate flex items-center gap-1 hover:opacity-80 transition-opacity",
+                            session.done
+                              ? "bg-accent/20 text-accent line-through opacity-60"
+                              : "bg-accent/20 text-accent"
+                          )}
                         >
-                          {session.examTitle.replace("Egzamin z ", "").slice(0, 10)}{" "}
-                          {session.hours}h
+                          <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+                          <span className="truncate">{session.topic}</span>
                         </button>
                       );
                     }
@@ -249,82 +265,173 @@ export default function CalendarPage() {
       <BottomNav />
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>
+        <SheetContent className="w-[320px] sm:w-[380px] p-0 flex flex-col gap-0">
+          {/* Header */}
+          <div className="flex items-center gap-3 px-6 py-5 border-b border-border">
+            <div className={cn(
+              "flex items-center justify-center w-9 h-9 rounded-lg shrink-0",
+              selectedItem?.type === "task"
+                ? "bg-primary/15 text-primary"
+                : "bg-accent/15 text-accent"
+            )}>
               {selectedItem?.type === "task"
-                ? "Szczegóły zadania"
-                : "Szczegóły sesji"}
-            </SheetTitle>
-          </SheetHeader>
+                ? <CheckSquare className="h-4 w-4" />
+                : <BookOpen className="h-4 w-4" />
+              }
+            </div>
+            <SheetHeader className="p-0 text-left">
+              <SheetTitle className="text-base">
+                {selectedItem?.type === "task" ? "Szczegóły zadania" : "Szczegóły sesji"}
+              </SheetTitle>
+            </SheetHeader>
+          </div>
 
           {selectedItem && (
-            <div className="mt-6 space-y-4">
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
               {selectedItem.type === "task" ? (
                 <>
-                  <h3 className="font-semibold">{selectedItem.data.title}</h3>
-                  {selectedItem.data.description && (
-                    <p className="text-sm text-muted-foreground">
-                      {selectedItem.data.description}
+                  {/* Title */}
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Tytuł</p>
+                    <p className={cn(
+                      "font-semibold text-foreground leading-snug",
+                      selectedItem.data.done && "line-through text-muted-foreground"
+                    )}>
+                      {selectedItem.data.title}
                     </p>
-                  )}
-                  {selectedItem.data.deadline && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Termin</span>
-                      <span className="text-sm font-medium">
-                        {formatDateFull(selectedItem.data.deadline)}
-                      </span>
+                  </div>
+
+                  {/* Description */}
+                  {selectedItem.data.description && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                        <AlignLeft className="h-3 w-3" />
+                        Opis
+                      </p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {selectedItem.data.description}
+                      </p>
                     </div>
                   )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Priorytet</span>
-                    <div className="flex gap-0.5">
-                      {[1, 2, 3, 4, 5].map((level) => (
-                        <div
-                          key={level}
-                          className={cn(
-                            "w-2 h-2 rounded-full",
-                            level <= selectedItem.data.priority
-                              ? "bg-foreground"
-                              : "bg-border"
-                          )}
-                        />
-                      ))}
+
+                  {/* Info rows */}
+                  <div className="rounded-lg border border-border divide-y divide-border overflow-hidden">
+                    {selectedItem.data.deadline && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-3.5 w-3.5" />
+                          Termin
+                        </span>
+                        <span className="text-sm font-medium text-foreground">
+                          {formatDateFull(selectedItem.data.deadline)}
+                        </span>
+                      </div>
+                    )}
+                    {selectedItem.data.category && (
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Tag className="h-3.5 w-3.5" />
+                          Kategoria
+                        </span>
+                        <span
+                          className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                          style={{
+                            backgroundColor: `${selectedItem.data.category.color}20`,
+                            color: selectedItem.data.category.color,
+                          }}
+                        >
+                          {selectedItem.data.category.name}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-muted-foreground">Priorytet</span>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((level) => (
+                          <div
+                            key={level}
+                            className={cn(
+                              "w-2 h-2 rounded-full",
+                              level <= selectedItem.data.priority ? "bg-primary" : "bg-border"
+                            )}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-muted-foreground">Status</span>
+                      <span className={cn(
+                        "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium",
+                        selectedItem.data.done
+                          ? "bg-urgency-low/15 text-urgency-low"
+                          : "bg-muted text-muted-foreground"
+                      )}>
+                        {selectedItem.data.done
+                          ? <><CheckCircle2 className="h-3 w-3" />Ukończone</>
+                          : <><Circle className="h-3 w-3" />Aktywne</>
+                        }
+                      </span>
                     </div>
                   </div>
                 </>
               ) : (
                 <>
-                  <h3 className="font-semibold">
-                    {selectedItem.data.topic}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedItem.data.examTitle}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Data</span>
-                    <span className="text-sm font-medium">
-                      {formatDateFull(selectedItem.data.date)}
-                    </span>
+                  {/* Topic */}
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Temat</p>
+                    <p className={cn(
+                      "font-semibold text-foreground leading-snug",
+                      selectedItem.data.done && "line-through text-muted-foreground"
+                    )}>
+                      {selectedItem.data.topic}
+                    </p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Czas</span>
-                    <span className="inline-flex items-center rounded-md bg-accent/15 text-accent px-2 py-0.5 text-sm font-medium">
-                      {selectedItem.data.hours}h
-                    </span>
+
+                  {/* Exam name */}
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                      <BookOpen className="h-3 w-3" />
+                      Egzamin
+                    </p>
+                    <p className="text-sm text-foreground font-medium">
+                      {selectedItem.data.examTitle}
+                    </p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Status</span>
-                    <span
-                      className={cn(
-                        "text-sm font-medium",
+
+                  {/* Info rows */}
+                  <div className="rounded-lg border border-border divide-y divide-border overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-3.5 w-3.5" />
+                        Data
+                      </span>
+                      <span className="text-sm font-medium text-foreground">
+                        {formatDateFull(selectedItem.data.date)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock className="h-3.5 w-3.5" />
+                        Czas nauki
+                      </span>
+                      <span className="inline-flex items-center rounded-md bg-accent/15 text-accent px-2 py-0.5 text-xs font-medium">
+                        {selectedItem.data.hours}h
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-muted-foreground">Status</span>
+                      <span className={cn(
+                        "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium",
                         selectedItem.data.done
-                          ? "text-urgency-low"
-                          : "text-muted-foreground"
-                      )}
-                    >
-                      {selectedItem.data.done ? "Ukończona" : "Do zrobienia"}
-                    </span>
+                          ? "bg-urgency-low/15 text-urgency-low"
+                          : "bg-primary/10 text-primary"
+                      )}>
+                        {selectedItem.data.done
+                          ? <><CheckCircle2 className="h-3 w-3" />Ukończona</>
+                          : <><Circle className="h-3 w-3" />Do zrobienia</>
+                        }
+                      </span>
+                    </div>
                   </div>
                 </>
               )}
