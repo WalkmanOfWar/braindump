@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, ClipboardList, Sparkles, Search, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { useCalendarSync } from "@/hooks/use-calendar-sync";
 import type { TaskWithCategory, Category, UiTask } from "@/types";
 
 type FilterTab = "all" | "active" | "completed";
@@ -140,22 +141,7 @@ export default function TasksPage() {
     }
   };
 
-  const handleSyncCalendar = async (id: string, action: "create" | "delete") => {
-    const res = await fetch("/api/calendar/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "task", id, action }),
-    });
-    if (res.ok) {
-      setTasks((prev) =>
-        prev.map((t) => t.id === id ? { ...t, googleEventId: action === "create" ? "synced" : null } : t)
-      );
-      toast.success(action === "create" ? "Dodano do Google Calendar" : "Usunięto z Google Calendar");
-    } else {
-      const data: { error?: string } = await res.json();
-      toast.error(data.error ?? "Błąd synchronizacji");
-    }
-  };
+  const handleSyncCalendar = useCalendarSync(setTasks);
 
   const handleSave = async (taskData: Partial<UiTask>) => {
     if (taskData.id) {
