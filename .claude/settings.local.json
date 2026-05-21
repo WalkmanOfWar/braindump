@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\GithubProj\\\\braindump\\\\app\\\\api\\\\ai\\\\parse-task\")",
+      "Bash(Out-Null)",
+      "Bash(Write-Output \"done\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\GithubProj\\\\braindump\\\\app\\\\api\\\\ai\\\\parse-task\")",
+      "Bash(git add *)",
+      "Bash(git checkout *)",
+      "Bash(git reset *)",
+      "Bash(git push *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git commit -m ' *)",
+      "Bash(\"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\" auth status)",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\GithubProj\\\\braindump\\\\app\\\\api\\\\exams\\\\[id]\")",
+      "Bash(mkdir -p \"C:/GithubProj/braindump/app/api/exams/[id]\" && echo \"done\")",
+      "Bash(npx tsc *)",
+      "Bash(node -e \"require.resolve\\('next-auth/providers'\\)\")",
+      "Bash(where gh *)",
+      "Bash(del \"C:\\\\GithubProj\\\\braindump\\\\middleware.ts\")",
+      "Bash(git rm *)"
+    ]
+  }
+}
