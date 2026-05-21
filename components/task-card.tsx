@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { MoreHorizontal, Pencil, Trash2, CalendarPlus, CalendarX2, Loader2 } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, CalendarPlus, CalendarX2, Loader2, AlertTriangle } from 'lucide-react'
 import type { UiTask } from '@/types'
 import { getUrgencyLevel, getUrgencyColor, formatDate } from '@/lib/utils'
 
@@ -55,6 +55,7 @@ export function TaskCard({
   const category = categoryOverride ?? null
   const urgencyLevel = getUrgencyLevel(task.deadline)
   const urgencyColor = getUrgencyColor(urgencyLevel)
+  const isOverdue = !isCompleted && task.deadline < new Date()
 
   const handleToggle = () => {
     const newValue = !isCompleted
@@ -71,7 +72,9 @@ export function TaskCard({
         'flex items-start gap-3 p-4 rounded-lg border transition-all',
         isHighlighted
           ? 'bg-primary text-primary-foreground border-primary shadow-lg'
-          : 'bg-card border-border hover:border-muted-foreground/30 hover:shadow-sm'
+          : isOverdue
+            ? 'bg-destructive/5 border-destructive/40 border-l-4 border-l-destructive hover:shadow-sm'
+            : 'bg-card border-border hover:border-muted-foreground/30 hover:shadow-sm'
       )}
     >
       <Checkbox 
@@ -141,15 +144,22 @@ export function TaskCard({
         
         <div className="flex items-center gap-2 mt-2 flex-wrap">
           {/* Deadline */}
-          <span 
-            className={cn(
-              'text-xs',
-              isHighlighted ? 'text-primary-foreground/80' : 'text-muted-foreground'
-            )}
-            style={{ color: isHighlighted ? undefined : urgencyColor }}
-          >
-            Termin: {formatDate(task.deadline)}
-          </span>
+          {isOverdue && !isHighlighted ? (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
+              <AlertTriangle className="h-3 w-3" />
+              Po terminie · {formatDate(task.deadline)}
+            </span>
+          ) : (
+            <span
+              className={cn(
+                'text-xs',
+                isHighlighted ? 'text-primary-foreground/80' : 'text-muted-foreground'
+              )}
+              style={{ color: isHighlighted ? undefined : urgencyColor }}
+            >
+              Termin: {formatDate(task.deadline)}
+            </span>
+          )}
           
           {/* Category Badge */}
           {category && (
