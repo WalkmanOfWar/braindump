@@ -6,15 +6,21 @@ import { BottomNav } from "@/components/bottom-nav";
 import { ExamCard } from "@/components/exam-card";
 import { ExamModal } from "@/components/exam-modal";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, GraduationCap } from "lucide-react";
+import { toast } from "sonner";
 import type { ExamWithSessions } from "@/types";
 import type { Category } from "@/types";
+
+type FilterTab = "active" | "past";
 
 export default function ExamsPage() {
   const [exams, setExams] = useState<ExamWithSessions[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingExam, setEditingExam] = useState<ExamWithSessions | null>(null);
   const [loading, setLoading] = useState(true);
+  const [filterTab, setFilterTab] = useState<FilterTab>("active");
 
   const fetchData = useCallback(async () => {
     const [examsRes, catsRes] = await Promise.all([
@@ -56,8 +62,36 @@ export default function ExamsPage() {
   };
 
   const handleSaveExam = (exam: ExamWithSessions) => {
-    setExams((prev) => [...prev, exam]);
+    setExams((prev) => {
+      const exists = prev.find((e) => e.id === exam.id);
+      return exists
+        ? prev.map((e) => (e.id === exam.id ? exam : e))
+        : [...prev, exam];
+    });
+    setEditingExam(null);
   };
+
+  const handleEditExam = (exam: ExamWithSessions) => {
+    setEditingExam(exam);
+    setModalOpen(true);
+  };
+
+  const handleDeleteExam = async (examId: string) => {
+    const res = await fetch(`/api/exams/${examId}`, { method: "DELETE" });
+    if (res.ok) {
+      setExams((prev) => prev.filter((e) => e.id !== examId));
+      toast.success("Egzamin usunięty");
+    } else {
+      toast.error("Nie udało się usunąć egzaminu");
+    }
+  };
+
+  const now = new Date();
+  const filtered = exams.filter((e) =>
+    filterTab === "active"
+      ? new Date(e.examDate) >= now
+      : new Date(e.examDate) < now
+  );
 
   if (loading) {
     return (
@@ -75,7 +109,7 @@ export default function ExamsPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-foreground">Egzaminy</h1>
           <Button
-            onClick={() => setModalOpen(true)}
+            onClick={() => { setEditingExam(null); setModalOpen(true); }}
             className="bg-accent text-accent-foreground hover:bg-accent/90"
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -83,13 +117,22 @@ export default function ExamsPage() {
           </Button>
         </div>
 
-        {exams.length > 0 ? (
+        <Tabs value={filterTab} onValueChange={(v) => setFilterTab(v as FilterTab)} className="mb-6">
+          <TabsList className="grid w-full grid-cols-2 sm:w-64">
+            <TabsTrigger value="active">Nadchodzące</TabsTrigger>
+            <TabsTrigger value="past">Przeszłe</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {filtered.length > 0 ? (
           <div className="space-y-4">
-            {exams.map((exam) => (
+            {filtered.map((exam) => (
               <ExamCard
                 key={exam.id}
                 exam={exam}
                 onToggleSession={handleToggleSession}
+                onDelete={handleDeleteExam}
+                onEdit={handleEditExam}
               />
             ))}
           </div>
@@ -99,18 +142,22 @@ export default function ExamsPage() {
               <GraduationCap className="w-10 h-10 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-medium text-foreground mb-2">
-              Brak egzaminów
+              {filterTab === "active" ? "Brak nadchodzących egzaminów" : "Brak przeszłych egzaminów"}
             </h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Dodaj egzamin i wygeneruj plan nauki!
-            </p>
-            <Button
-              onClick={() => setModalOpen(true)}
-              className="bg-accent text-accent-foreground hover:bg-accent/90"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Dodaj egzamin
-            </Button>
+            {filterTab === "active" && (
+              <>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Dodaj egzamin i wygeneruj plan nauki!
+                </p>
+                <Button
+                  onClick={() => { setEditingExam(null); setModalOpen(true); }}
+                  className="bg-accent text-accent-foreground hover:bg-accent/90"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Dodaj egzamin
+                </Button>
+              </>
+            )}
           </div>
         )}
       </main>
@@ -119,9 +166,11 @@ export default function ExamsPage() {
 
       <ExamModal
         open={modalOpen}
-        onOpenChange={setModalOpen}
+        onOpenChange={(v) => { setModalOpen(v); if (!v) setEditingExam(null); }}
+        exam={editingExam}
         categories={categories}
         onSave={handleSaveExam}
+        onCategoryCreated={(cat) => setCategories((prev) => [...prev, cat])}
       />
     </div>
   );

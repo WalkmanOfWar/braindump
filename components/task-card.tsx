@@ -11,6 +11,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { MoreHorizontal, Pencil, Trash2, Calendar } from 'lucide-react'
 import type { UiTask } from '@/types'
 import { getUrgencyLevel, getUrgencyColor, formatDate } from '@/lib/utils'
@@ -38,6 +48,7 @@ export function TaskCard({
   onDelete,
 }: TaskCardProps) {
   const [isCompleted, setIsCompleted] = useState(task.completed)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const category = categoryOverride ?? null
   const urgencyLevel = getUrgencyLevel(task.deadline)
   const urgencyColor = getUrgencyColor(urgencyLevel)
@@ -51,7 +62,8 @@ export function TaskCard({
   const isHighlighted = variant === 'highlighted'
 
   return (
-    <div 
+    <>
+    <div
       className={cn(
         'flex items-start gap-3 p-4 rounded-lg border transition-all',
         isHighlighted 
@@ -98,7 +110,7 @@ export function TaskCard({
                 <Pencil className="h-4 w-4 mr-2" />
                 Edytuj
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDelete?.(task.id)} className="text-destructive">
+              <DropdownMenuItem onClick={() => setConfirmDelete(true)} className="text-destructive">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Usuń
               </DropdownMenuItem>
@@ -146,13 +158,13 @@ export function TaskCard({
           {/* Priority Dots */}
           <div className="flex gap-0.5">
             {[1, 2, 3, 4, 5].map((level) => (
-              <div 
+              <div
                 key={level}
                 className={cn(
                   'w-1.5 h-1.5 rounded-full',
-                  level <= task.priority 
-                    ? isHighlighted ? 'bg-accent' : 'bg-foreground'
-                    : isHighlighted ? 'bg-primary-foreground/30' : 'bg-border'
+                  level <= task.priority
+                    ? isHighlighted ? 'bg-primary-foreground' : 'bg-foreground'
+                    : isHighlighted ? 'bg-primary-foreground/25' : 'bg-border'
                 )}
               />
             ))}
@@ -160,5 +172,26 @@ export function TaskCard({
         </div>
       </div>
     </div>
+    <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Usuń zadanie?</AlertDialogTitle>
+            <AlertDialogDescription>
+              „{task.title}" zostanie trwale usunięte. Tej akcji nie można cofnąć.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Anuluj</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => onDelete?.(task.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Usuń
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
+
