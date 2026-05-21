@@ -38,8 +38,12 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-background">
-      <Card className="w-full max-w-md border-border shadow-sm">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-background relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-accent/10 blur-3xl" />
+      </div>
+      <Card className="relative w-full max-w-md border-border shadow-lg">
         <CardHeader className="text-center space-y-2 pb-4">
           <h1 className="text-2xl font-bold text-foreground">Utwórz konto</h1>
           <p className="text-sm text-muted-foreground">

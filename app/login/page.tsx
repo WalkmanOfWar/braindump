@@ -1,13 +1,13 @@
 "use client";
 
 import { signIn, getProviders, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import type { ClientSafeProvider, LiteralUnion } from "next-auth/react";
 import type { BuiltInProviderType } from "next-auth/providers/index";
 
@@ -58,6 +58,8 @@ const PROVIDER_LABELS: Record<string, string> = {
 export default function LoginPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const justRegistered = searchParams.get("registered") === "1";
   const [providers, setProviders] = useState<Providers | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -124,6 +126,13 @@ export default function LoginPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {justRegistered && (
+            <div className="flex items-center gap-2 rounded-lg bg-urgency-low/10 border border-urgency-low/25 px-3 py-2.5 text-sm text-urgency-low">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              Konto zostało utworzone! Możesz się teraz zalogować.
+            </div>
+          )}
+
           {oauthProviders.map((provider) => {
             const Icon = PROVIDER_ICONS[provider.id];
             const label = PROVIDER_LABELS[provider.id] ?? `Zaloguj się przez ${provider.name}`;
