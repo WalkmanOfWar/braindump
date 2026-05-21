@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { TopNavbar } from "@/components/top-navbar";
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
@@ -204,7 +203,7 @@ export default function CalendarPage() {
                           }}
                         >
                           {task.done && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-urgency-low shrink-0" />
                           )}
                           <span className="truncate">{task.title}</span>
                         </button>
@@ -310,9 +309,9 @@ export default function CalendarPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Czas</span>
-                    <Badge className="bg-accent text-accent-foreground">
+                    <span className="inline-flex items-center rounded-md bg-accent/15 text-accent px-2 py-0.5 text-sm font-medium">
                       {selectedItem.data.hours}h
-                    </Badge>
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Status</span>
@@ -320,7 +319,7 @@ export default function CalendarPage() {
                       className={cn(
                         "text-sm font-medium",
                         selectedItem.data.done
-                          ? "text-green-600"
+                          ? "text-urgency-low"
                           : "text-muted-foreground"
                       )}
                     >

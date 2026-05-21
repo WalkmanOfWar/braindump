@@ -57,9 +57,10 @@ export function ExamCard({ exam, onToggleSession, onDelete, onEdit }: ExamCardPr
     totalSessions > 0 ? (completedSessions / totalSessions) * 100 : 0;
 
   const getCountdownColor = () => {
+    if (daysUntil <= 0) return "bg-destructive/15 text-destructive border border-destructive/25";
     if (daysUntil < 3) return "bg-destructive text-destructive-foreground";
-    if (daysUntil < 7) return "bg-warning text-accent-foreground";
-    return "bg-success text-accent-foreground";
+    if (daysUntil < 7) return "bg-urgency-high/15 text-urgency-high border border-urgency-high/25";
+    return "bg-urgency-low/15 text-urgency-low border border-urgency-low/25";
   };
 
   const isToday = (date: Date | string) => {
@@ -92,9 +93,9 @@ export function ExamCard({ exam, onToggleSession, onDelete, onEdit }: ExamCardPr
             </p>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge className={cn("text-xs", getCountdownColor())}>
-                {daysUntil > 0 ? `zostało ${daysUntil} dni` : "termin minął"}
-              </Badge>
+              <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium", getCountdownColor())}>
+                {daysUntil > 0 ? `zostało ${daysUntil} dni` : daysUntil === 0 ? "dziś!" : "termin minął"}
+              </span>
               <span className="text-xs text-muted-foreground">
                 {exam.dailyHours}h/dzień
               </span>
@@ -213,9 +214,9 @@ export function ExamCard({ exam, onToggleSession, onDelete, onEdit }: ExamCardPr
                     {session.topic}
                   </span>
 
-                  <Badge className="bg-accent text-accent-foreground shrink-0">
+                  <span className="inline-flex items-center rounded-md bg-accent/15 text-accent px-2 py-0.5 text-xs font-medium shrink-0">
                     {session.hours}h
-                  </Badge>
+                  </span>
                 </div>
               );
             })}

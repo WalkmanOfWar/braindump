@@ -33,9 +33,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { title, examDate, dailyHours, topics, categoryId } = parsed.data;
+  const { title, examDate, dailyHours, topics, categoryId, today } = parsed.data;
   const examDateObj = new Date(examDate);
-  const sessions = generateSessions(examDateObj, dailyHours, topics);
+  const sessions = generateSessions(examDateObj, dailyHours, topics, today);
 
   const exam = await prisma.exam.create({
     data: {
