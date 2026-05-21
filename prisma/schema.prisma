@@ -67,16 +67,17 @@ model Category {
 }
 
 model Task {
-  id            String    @id @default(cuid())
-  title         String
-  description   String?
-  deadline      DateTime?
-  priority      Int       @default(3)
-  done          Boolean   @default(false)
-  doneAt        DateTime?
-  googleEventId String?
-  userId        String
-  categoryId    String?
+  id              String    @id @default(cuid())
+  title           String
+  description     String?
+  deadline        DateTime?
+  priority        Int       @default(3)
+  done            Boolean   @default(false)
+  doneAt          DateTime?
+  googleEventId   String?
+  reminderSentAt  DateTime?
+  userId          String
+  categoryId      String?
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id])
   createdAt DateTime @default(now())

@@ -59,7 +59,7 @@ export async function PATCH(
     data: {
       ...(title !== undefined ? { title: title.trim() } : {}),
       ...(description !== undefined ? { description } : {}),
-      ...(deadline !== undefined ? { deadline: deadline ? new Date(deadline) : null } : {}),
+      ...(deadline !== undefined ? { deadline: deadline ? new Date(deadline) : null, reminderSentAt: null } : {}),
       ...(priority !== undefined ? { priority } : {}),
       ...(categoryId !== undefined ? { categoryId } : {}),
       ...(done !== undefined ? { done, doneAt: done ? new Date() : null } : {}),
