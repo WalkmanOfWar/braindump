@@ -399,7 +399,7 @@ export function TaskModal({
           <Button
             onClick={handleSubmit}
             disabled={!title.trim()}
-            className="bg-primary text-primary-foreground shadow-[0_4px_14px_0_rgba(255,212,59,0.4)]"
+            className="bg-primary text-primary-foreground"
           >
             {isEditing ? 'Zapisz zmiany' : 'Dodaj zadanie'}
           </Button>

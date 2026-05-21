@@ -66,9 +66,9 @@ export function TaskCard({
     <div
       className={cn(
         'flex items-start gap-3 p-4 rounded-lg border transition-all',
-        isHighlighted 
-          ? 'bg-primary text-primary-foreground border-primary shadow-[0_4px_14px_0_rgba(255,212,59,0.4)]'
-          : 'bg-card border-border hover:border-muted-foreground/30'
+        isHighlighted
+          ? 'bg-primary text-primary-foreground border-primary shadow-lg'
+          : 'bg-card border-border hover:border-muted-foreground/30 hover:shadow-sm'
       )}
     >
       <Checkbox 

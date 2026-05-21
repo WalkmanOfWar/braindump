@@ -6,7 +6,6 @@ import { TopNavbar } from "@/components/top-navbar";
 import { BottomNav } from "@/components/bottom-nav";
 import { TaskCard } from "@/components/task-card";
 import { TaskModal } from "@/components/task-modal";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, CheckCircle2, ListTodo, BookOpen } from "lucide-react";
@@ -225,26 +224,26 @@ export default function DashboardPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <ListTodo className="h-4 w-4" />
-              <span className="text-xs">Aktywne</span>
+          <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1 hover:shadow-sm transition-shadow">
+            <div className="flex items-center gap-2">
+              <ListTodo className="h-4 w-4 text-primary" />
+              <span className="text-xs text-muted-foreground">Aktywne</span>
             </div>
             <p className="text-2xl font-bold text-foreground">{activeTasks}</p>
             <p className="text-xs text-muted-foreground">zadań do zrobienia</p>
           </div>
-          <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <CheckCircle2 className="h-4 w-4" />
-              <span className="text-xs">Dziś</span>
+          <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1 hover:shadow-sm transition-shadow">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-urgency-low" />
+              <span className="text-xs text-muted-foreground">Dziś</span>
             </div>
             <p className="text-2xl font-bold text-foreground">{doneTodayTasks}</p>
-            <p className="text-xs text-muted-foreground">zadań ukończonych</p>
+            <p className="text-xs text-muted-foreground">ukończonych</p>
           </div>
-          <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <BookOpen className="h-4 w-4" />
-              <span className="text-xs">Nauka</span>
+          <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1 hover:shadow-sm transition-shadow">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-accent" />
+              <span className="text-xs text-muted-foreground">Nauka</span>
             </div>
             <p className="text-2xl font-bold text-foreground">
               {doneSessionsToday}/{todaySessions.length}
@@ -303,9 +302,9 @@ export default function DashboardPage() {
                       {session.topic}
                     </p>
                   </div>
-                  <Badge className="bg-accent text-accent-foreground hover:bg-accent/90 px-2 py-0.5 text-xs shrink-0">
+                  <span className="inline-flex items-center rounded-md bg-accent/15 text-accent px-2 py-0.5 text-xs font-medium shrink-0">
                     {session.hours}h
-                  </Badge>
+                  </span>
                 </div>
               ))}
             </div>
