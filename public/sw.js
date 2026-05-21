@@ -7,6 +7,7 @@ const PRECACHE_URLS = [
   '/tasks',
   '/exams',
   '/calendar',
+  '/offline.html',
   '/manifest.json',
   '/icon.svg',
 ];
@@ -61,6 +62,13 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(request))
+      .catch(async () => {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        // For navigation requests show the offline page
+        if (request.mode === 'navigate') {
+          return caches.match('/offline.html');
+        }
+      })
   );
 });

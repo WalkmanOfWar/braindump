@@ -16,9 +16,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, ClipboardList, Sparkles, Search, AlertCircle } from "lucide-react";
+import { Plus, ClipboardList, Sparkles, Search, AlertCircle, CheckSquare, Square, Trash2, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { TaskWithCategory, Category, UiTask } from "@/types";
 
 type FilterTab = "all" | "active" | "completed";
@@ -64,6 +74,9 @@ export default function TasksPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<UiTask | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -142,6 +155,58 @@ export default function TasksPage() {
   };
 
   const handleSyncCalendar = useCalendarSync(setTasks);
+
+  const toggleSelectionMode = () => {
+    setSelectionMode((prev) => !prev);
+    setSelectedIds(new Set());
+  };
+
+  const handleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((t) => t.id)));
+    }
+  };
+
+  const handleBulkComplete = async () => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    const results = await Promise.all(
+      ids.map((id) =>
+        fetch(`/api/tasks/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ done: true }),
+        }).then((r) => (r.ok ? r.json() : null))
+      )
+    );
+    setTasks((prev) =>
+      prev.map((t) => results.find((r) => r?.id === t.id) ?? t)
+    );
+    setSelectedIds(new Set());
+    const n = ids.length;
+    toast.success(`${n} ${n === 1 ? "zadanie ukończone" : n < 5 ? "zadania ukończone" : "zadań ukończono"}`);
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedIds];
+    await Promise.all(ids.map((id) => fetch(`/api/tasks/${id}`, { method: "DELETE" })));
+    setTasks((prev) => prev.filter((t) => !selectedIds.has(t.id)));
+    setSelectedIds(new Set());
+    setBulkDeleteOpen(false);
+    const n = ids.length;
+    toast.success(`${n} ${n === 1 ? "zadanie usunięte" : n < 5 ? "zadania usunięte" : "zadań usuniętych"}`);
+  };
 
   const handleSave = async (taskData: Partial<UiTask>) => {
     if (taskData.id) {
@@ -248,19 +313,40 @@ export default function TasksPage() {
               variant="outline"
               size="sm"
               onClick={handleAIPrioritize}
-              disabled={aiLoading || isLoading}
+              disabled={aiLoading || isLoading || selectionMode}
               title="Posortuj przez AI"
             >
               <Sparkles className="h-4 w-4 mr-1" />
               {aiLoading ? "AI…" : "AI"}
             </Button>
             <Button
-              onClick={() => { setEditingTask(null); setModalOpen(true); }}
-              className="bg-accent text-accent-foreground hover:bg-accent/90"
+              variant={selectionMode ? "default" : "outline"}
+              size="sm"
+              onClick={toggleSelectionMode}
+              disabled={isLoading || filtered.length === 0}
+              title="Zaznacz zadania"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Dodaj zadanie
+              {selectionMode ? (
+                <>
+                  <Square className="h-4 w-4 mr-1" />
+                  Anuluj
+                </>
+              ) : (
+                <>
+                  <CheckSquare className="h-4 w-4 mr-1" />
+                  Zaznacz
+                </>
+              )}
             </Button>
+            {!selectionMode && (
+              <Button
+                onClick={() => { setEditingTask(null); setModalOpen(true); }}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Dodaj zadanie
+              </Button>
+            )}
           </div>
         </div>
 
@@ -352,6 +438,9 @@ export default function TasksPage() {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onSyncCalendar={handleSyncCalendar}
+                selectionMode={selectionMode}
+                selected={selectedIds.has(task.id)}
+                onSelect={handleSelect}
               />
             ))}
           </div>
@@ -382,6 +471,79 @@ export default function TasksPage() {
       </main>
 
       <BottomNav />
+
+      {/* Bulk action toolbar */}
+      {selectionMode && (
+        <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-border shadow-lg">
+          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+            <button
+              onClick={handleSelectAll}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            >
+              {selectedIds.size === filtered.length && filtered.length > 0 ? (
+                <CheckSquare className="h-4 w-4 text-primary" />
+              ) : (
+                <Square className="h-4 w-4" />
+              )}
+              {selectedIds.size === filtered.length && filtered.length > 0
+                ? "Odznacz wszystkie"
+                : "Zaznacz wszystkie"}
+            </button>
+
+            <span className="flex-1 text-sm text-center text-muted-foreground">
+              {selectedIds.size > 0
+                ? `${selectedIds.size} zaznaczonych`
+                : "Zaznacz zadania"}
+            </span>
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={selectedIds.size === 0}
+              onClick={handleBulkComplete}
+              className="gap-1.5"
+            >
+              <CheckCheck className="h-4 w-4" />
+              <span className="hidden sm:inline">Ukończ</span>
+            </Button>
+
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={selectedIds.size === 0}
+              onClick={() => setBulkDeleteOpen(true)}
+              className="gap-1.5"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Usuń</span>
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk delete confirmation */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Usunąć zaznaczone zadania?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedIds.size === 1
+                ? "Zaznaczone zadanie zostanie trwale usunięte."
+                : `${selectedIds.size} zaznaczonych zadań zostanie trwale usuniętych.`}{" "}
+              Tej akcji nie można cofnąć.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Anuluj</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Usuń
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <TaskModal
         open={modalOpen}

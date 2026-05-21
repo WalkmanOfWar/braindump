@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brain Dump – Brak połączenia</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #faf9f7;
+      color: #2d2a26;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      text-align: center;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #18181b; color: #fafafa; }
+      .card { background: #1e1e23; border-color: #3f3f46; }
+      .btn { background: #a78bfa; color: #09090b; }
+      .btn:hover { opacity: 0.85; }
+    }
+    .icon {
+      width: 64px; height: 64px;
+      background: #7c5cff1a;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+    }
+    h1 { font-size: 1.5rem; font-weight: 700; }
+    p { font-size: 0.95rem; color: #8a8580; max-width: 320px; line-height: 1.6; }
+    .btn {
+      margin-top: 0.5rem;
+      padding: 0.6rem 1.5rem;
+      background: #7c5cff;
+      color: #fff;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.88; }
+  </style>
+</head>
+<body>
+  <div class="icon">📵</div>
+  <h1>Brak połączenia</h1>
+  <p>Nie możemy załadować tej strony.<br>Sprawdź połączenie z internetem i spróbuj ponownie.</p>
+  <a class="btn" onclick="location.reload()">Spróbuj ponownie</a>
+</body>
+</html>

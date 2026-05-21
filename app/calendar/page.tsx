@@ -32,6 +32,21 @@ type CalendarItem =
 
 const DAYS_PL = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
 
+type ViewMode = "week" | "month";
+
+function getMonthGridDays(date: Date): Date[] {
+  const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+  const dow = monthStart.getDay();
+  const offset = dow === 0 ? -6 : 1 - dow;
+  const gridStart = new Date(monthStart);
+  gridStart.setDate(monthStart.getDate() + offset);
+  return Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(gridStart);
+    d.setDate(gridStart.getDate() + i);
+    return d;
+  });
+}
+
 function formatDateFull(date: Date | string): string {
   return new Date(date).toLocaleDateString("pl-PL", {
     day: "numeric",
@@ -64,6 +79,7 @@ function isToday(date: Date): boolean {
 
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [tasks, setTasks] = useState<TaskWithCategory[]>([]);
   const [exams, setExams] = useState<ExamWithSessions[]>([]);
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null);
@@ -94,6 +110,25 @@ export default function CalendarPage() {
     return days;
   }, [weekStart]);
 
+  const monthGridDays = useMemo(
+    () => (viewMode === "month" ? getMonthGridDays(currentDate) : []),
+    [viewMode, currentDate]
+  );
+
+  const goBack = () => {
+    const d = new Date(currentDate);
+    if (viewMode === "week") d.setDate(d.getDate() - 7);
+    else d.setMonth(d.getMonth() - 1);
+    setCurrentDate(d);
+  };
+
+  const goForward = () => {
+    const d = new Date(currentDate);
+    if (viewMode === "week") d.setDate(d.getDate() + 7);
+    else d.setMonth(d.getMonth() + 1);
+    setCurrentDate(d);
+  };
+
   const getItemsForDay = (date: Date): CalendarItem[] => {
     const items: CalendarItem[] = [];
     tasks.forEach((task) => {
@@ -121,133 +156,232 @@ export default function CalendarPage() {
     return `${weekStart.getDate()}–${endDate.getDate()} ${month} ${weekStart.getFullYear()}`;
   };
 
+  const formatMonthLabel = () =>
+    currentDate.toLocaleDateString("pl-PL", { month: "long", year: "numeric" });
+
+  const rangeLabel = viewMode === "week" ? formatWeekRange() : formatMonthLabel();
+
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-6">
       <TopNavbar />
 
       <main className="max-w-6xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+          {/* Navigation */}
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const d = new Date(currentDate);
-                d.setDate(d.getDate() - 7);
-                setCurrentDate(d);
-              }}
-            >
+            <Button variant="outline" size="sm" onClick={goBack}>
               <ChevronLeft className="h-4 w-4 mr-1" />
               Poprzedni
             </Button>
-            <span className="text-sm font-medium text-foreground px-2 hidden sm:inline">
-              {formatWeekRange()}
+            <span className="text-sm font-medium text-foreground px-2 hidden sm:inline capitalize">
+              {rangeLabel}
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const d = new Date(currentDate);
-                d.setDate(d.getDate() + 7);
-                setCurrentDate(d);
-              }}
-            >
+            <Button variant="outline" size="sm" onClick={goForward}>
               Następny
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => setCurrentDate(new Date())}>
-            Dziś
-          </Button>
+
+          {/* Right controls: Today + view toggle */}
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setCurrentDate(new Date())}>
+              Dziś
+            </Button>
+            <div className="flex rounded-md border border-border overflow-hidden">
+              <button
+                onClick={() => setViewMode("week")}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium transition-colors",
+                  viewMode === "week"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background text-muted-foreground hover:bg-muted"
+                )}
+              >
+                Tydzień
+              </button>
+              <button
+                onClick={() => setViewMode("month")}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium transition-colors border-l border-border",
+                  viewMode === "month"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background text-muted-foreground hover:bg-muted"
+                )}
+              >
+                Miesiąc
+              </button>
+            </div>
+          </div>
         </div>
 
-        <p className="text-sm font-medium text-foreground mb-4 sm:hidden text-center">
-          {formatWeekRange()}
+        <p className="text-sm font-medium text-foreground mb-4 sm:hidden text-center capitalize">
+          {rangeLabel}
         </p>
 
-        <div className="grid grid-cols-7 gap-1 sm:gap-2">
-          {weekDays.map((day, index) => (
-            <div
-              key={`header-${index}`}
-              className={cn(
-                "text-center py-2 px-1",
-                isToday(day) && "bg-accent/20 rounded-t-lg"
-              )}
-            >
-              <div className="text-xs font-medium text-muted-foreground">
-                {DAYS_PL[index]}
-              </div>
+        {viewMode === "week" ? (
+          /* ── Week view ── */
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+            {weekDays.map((day, index) => (
               <div
+                key={`header-${index}`}
                 className={cn(
-                  "text-lg font-semibold",
-                  isToday(day) ? "text-accent-foreground" : "text-foreground"
+                  "text-center py-2 px-1",
+                  isToday(day) && "bg-accent/20 rounded-t-lg"
                 )}
               >
-                {day.getDate()}
-              </div>
-            </div>
-          ))}
-
-          {weekDays.map((day, index) => {
-            const items = getItemsForDay(day);
-            return (
-              <div
-                key={`cell-${index}`}
-                className={cn(
-                  "min-h-[120px] sm:min-h-[160px] border border-border rounded-lg p-1 sm:p-2",
-                  isToday(day) && "bg-accent/10 border-accent/30"
-                )}
-              >
-                <div className="space-y-1">
-                  {items.slice(0, 4).map((item, i) => {
-                    if (item.type === "task") {
-                      const task = item.data;
-                      const color = task.category?.color ?? "#888888";
-                      return (
-                        <button
-                          key={`task-${task.id}-${i}`}
-                          onClick={() => { setSelectedItem(item); setSheetOpen(true); }}
-                          className="w-full text-left px-1.5 py-1 rounded text-xs truncate flex items-center gap-1 hover:opacity-80 transition-opacity"
-                          style={{
-                            backgroundColor: `${color}30`,
-                            color,
-                          }}
-                        >
-                          {task.done && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-urgency-low shrink-0" />
-                          )}
-                          <span className="truncate">{task.title}</span>
-                        </button>
-                      );
-                    } else {
-                      const session = item.data;
-                      return (
-                        <button
-                          key={`session-${session.id}-${i}`}
-                          onClick={() => { setSelectedItem(item); setSheetOpen(true); }}
-                          className={cn(
-                            "w-full text-left px-1.5 py-1 rounded text-xs truncate flex items-center gap-1 hover:opacity-80 transition-opacity",
-                            session.done
-                              ? "bg-accent/20 text-accent line-through opacity-60"
-                              : "bg-accent/20 text-accent"
-                          )}
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-                          <span className="truncate">{session.topic}</span>
-                        </button>
-                      );
-                    }
-                  })}
-                  {items.length > 4 && (
-                    <div className="text-xs text-muted-foreground px-1">
-                      +{items.length - 4} więcej
-                    </div>
+                <div className="text-xs font-medium text-muted-foreground">
+                  {DAYS_PL[index]}
+                </div>
+                <div
+                  className={cn(
+                    "text-lg font-semibold",
+                    isToday(day) ? "text-accent-foreground" : "text-foreground"
                   )}
+                >
+                  {day.getDate()}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+
+            {weekDays.map((day, index) => {
+              const items = getItemsForDay(day);
+              return (
+                <div
+                  key={`cell-${index}`}
+                  className={cn(
+                    "min-h-[120px] sm:min-h-[160px] border border-border rounded-lg p-1 sm:p-2",
+                    isToday(day) && "bg-accent/10 border-accent/30"
+                  )}
+                >
+                  <div className="space-y-1">
+                    {items.slice(0, 4).map((item, i) => {
+                      if (item.type === "task") {
+                        const task = item.data;
+                        const color = task.category?.color ?? "#888888";
+                        return (
+                          <button
+                            key={`task-${task.id}-${i}`}
+                            onClick={() => { setSelectedItem(item); setSheetOpen(true); }}
+                            className="w-full text-left px-1.5 py-1 rounded text-xs truncate flex items-center gap-1 hover:opacity-80 transition-opacity"
+                            style={{ backgroundColor: `${color}30`, color }}
+                          >
+                            {task.done && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-urgency-low shrink-0" />
+                            )}
+                            <span className="truncate">{task.title}</span>
+                          </button>
+                        );
+                      } else {
+                        const session = item.data;
+                        return (
+                          <button
+                            key={`session-${session.id}-${i}`}
+                            onClick={() => { setSelectedItem(item); setSheetOpen(true); }}
+                            className={cn(
+                              "w-full text-left px-1.5 py-1 rounded text-xs truncate flex items-center gap-1 hover:opacity-80 transition-opacity",
+                              session.done
+                                ? "bg-accent/20 text-accent line-through opacity-60"
+                                : "bg-accent/20 text-accent"
+                            )}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+                            <span className="truncate">{session.topic}</span>
+                          </button>
+                        );
+                      }
+                    })}
+                    {items.length > 4 && (
+                      <div className="text-xs text-muted-foreground px-1">
+                        +{items.length - 4} więcej
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* ── Month view ── */
+          <div>
+            {/* Day-of-week header row */}
+            <div className="grid grid-cols-7 mb-1">
+              {DAYS_PL.map((d) => (
+                <div key={d} className="text-center text-xs font-medium text-muted-foreground py-2">
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* 6-week grid: gap-px + bg-border gives a hairline grid effect */}
+            <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden border border-border">
+              {monthGridDays.map((day, i) => {
+                const items = getItemsForDay(day);
+                const inMonth = day.getMonth() === currentDate.getMonth();
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "min-h-[80px] sm:min-h-[96px] p-1 bg-card",
+                      !inMonth && "bg-muted/20",
+                      isToday(day) && "bg-accent/10"
+                    )}
+                  >
+                    {/* Day number */}
+                    <div
+                      className={cn(
+                        "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-0.5",
+                        isToday(day)
+                          ? "bg-primary text-primary-foreground"
+                          : inMonth
+                            ? "text-foreground"
+                            : "text-muted-foreground/40"
+                      )}
+                    >
+                      {day.getDate()}
+                    </div>
+
+                    {/* Event pills */}
+                    <div className="space-y-0.5">
+                      {items.slice(0, 2).map((item, j) => {
+                        if (item.type === "task") {
+                          const color = item.data.category?.color ?? "#888888";
+                          return (
+                            <button
+                              key={`m-task-${item.data.id}-${j}`}
+                              onClick={() => { setSelectedItem(item); setSheetOpen(true); }}
+                              className="w-full text-left px-1 py-0.5 rounded text-[10px] leading-tight truncate hover:opacity-80 transition-opacity"
+                              style={{ backgroundColor: `${color}30`, color }}
+                            >
+                              {item.data.title}
+                            </button>
+                          );
+                        } else {
+                          return (
+                            <button
+                              key={`m-sess-${item.data.id}-${j}`}
+                              onClick={() => { setSelectedItem(item); setSheetOpen(true); }}
+                              className={cn(
+                                "w-full text-left px-1 py-0.5 rounded text-[10px] leading-tight truncate bg-accent/20 text-accent hover:opacity-80 transition-opacity",
+                                item.data.done && "line-through opacity-50"
+                              )}
+                            >
+                              {item.data.topic}
+                            </button>
+                          );
+                        }
+                      })}
+                      {items.length > 2 && (
+                        <div className="text-[10px] text-muted-foreground px-0.5">
+                          +{items.length - 2}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 flex items-center gap-4 flex-wrap">
           <span className="text-xs text-muted-foreground">Legenda:</span>
