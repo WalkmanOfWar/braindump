@@ -21,8 +21,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { Plus, Check, Sparkles, Loader2 } from 'lucide-react'
-import type { UiTask, Category } from '@/types'
+import { Plus, Check, Sparkles, Loader2, Trash2, RepeatIcon } from 'lucide-react'
+import type { UiTask, Category, Recurrence, Subtask } from '@/types'
+import { nanoid } from 'nanoid'
 
 const PRESET_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#22c55e',
@@ -53,6 +54,12 @@ export function TaskModal({
   const [priority, setPriority] = useState(3)
   const [categoryId, setCategoryId] = useState('')
   const [syncWithGoogle, setSyncWithGoogle] = useState(false)
+  const [recurrence, setRecurrence] = useState<Recurrence>('none')
+  const [recurrenceEnd, setRecurrenceEnd] = useState('')
+
+  // Subtasks
+  const [subtasks, setSubtasks] = useState<Subtask[]>([])
+  const [newSubtaskText, setNewSubtaskText] = useState('')
 
   // Ad-hoc AI fill
   const [adHocText, setAdHocText] = useState('')
@@ -75,6 +82,9 @@ export function TaskModal({
       setPriority(task.priority)
       setCategoryId(task.categoryId)
       setSyncWithGoogle(task.syncWithGoogle)
+      setRecurrence(task.recurrence ?? 'none')
+      setRecurrenceEnd(task.recurrenceEnd ? task.recurrenceEnd.toISOString().slice(0, 10) : '')
+      setSubtasks(task.subtasks ?? [])
     } else {
       setTitle('')
       setDescription('')
@@ -82,7 +92,11 @@ export function TaskModal({
       setPriority(3)
       setCategoryId('')
       setSyncWithGoogle(false)
+      setRecurrence('none')
+      setRecurrenceEnd('')
+      setSubtasks([])
     }
+    setNewSubtaskText('')
     setAdHocText('')
     setAdHocError('')
     setShowNewCategory(false)
@@ -159,6 +173,18 @@ export function TaskModal({
     }
   }
 
+  const addSubtask = () => {
+    if (!newSubtaskText.trim()) return
+    setSubtasks((prev) => [...prev, { id: nanoid(), text: newSubtaskText.trim(), done: false }])
+    setNewSubtaskText('')
+  }
+
+  const toggleSubtask = (id: string) =>
+    setSubtasks((prev) => prev.map((s) => s.id === id ? { ...s, done: !s.done } : s))
+
+  const removeSubtask = (id: string) =>
+    setSubtasks((prev) => prev.filter((s) => s.id !== id))
+
   const handleSubmit = () => {
     if (!title.trim()) return
     onSave({
@@ -170,6 +196,9 @@ export function TaskModal({
       categoryId,
       syncWithGoogle,
       completed: task?.completed || false,
+      recurrence,
+      recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : undefined,
+      subtasks: subtasks.length > 0 ? subtasks : undefined,
     })
     onOpenChange(false)
   }
@@ -405,6 +434,93 @@ export function TaskModal({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Recurrence */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <RepeatIcon className="w-3.5 h-3.5" />
+              Powtarzanie
+            </Label>
+            <div className="flex gap-1.5 flex-wrap">
+              {(['none', 'daily', 'weekly', 'monthly'] as Recurrence[]).map((r) => {
+                const labels: Record<Recurrence, string> = { none: 'Brak', daily: 'Codziennie', weekly: 'Co tydzień', monthly: 'Co miesiąc' }
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRecurrence(r)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-md text-xs border transition-colors',
+                      recurrence === r
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
+                    )}
+                  >
+                    {labels[r]}
+                  </button>
+                )
+              })}
+            </div>
+            {recurrence !== 'none' && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Label htmlFor="recurrenceEnd" className="shrink-0 text-xs">do:</Label>
+                <Input
+                  id="recurrenceEnd"
+                  type="date"
+                  value={recurrenceEnd}
+                  onChange={(e) => setRecurrenceEnd(e.target.value)}
+                  className="h-8 text-xs"
+                  placeholder="bez końca"
+                />
+                {recurrenceEnd && (
+                  <button onClick={() => setRecurrenceEnd('')} className="text-xs text-muted-foreground hover:text-destructive">
+                    wyczyść
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Subtasks */}
+          <div className="space-y-2">
+            <Label>Podzadania</Label>
+            {subtasks.length > 0 && (
+              <div className="space-y-1 rounded-lg border border-border p-2">
+                {subtasks.map((s) => (
+                  <div key={s.id} className="flex items-center gap-2 group">
+                    <input
+                      type="checkbox"
+                      checked={s.done}
+                      onChange={() => toggleSubtask(s.id)}
+                      className="h-3.5 w-3.5 rounded accent-primary cursor-pointer"
+                    />
+                    <span className={cn('flex-1 text-sm', s.done && 'line-through text-muted-foreground')}>
+                      {s.text}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeSubtask(s.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Input
+                value={newSubtaskText}
+                onChange={(e) => setNewSubtaskText(e.target.value)}
+                placeholder="Dodaj podzadanie…"
+                className="text-sm h-8"
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSubtask(); } }}
+              />
+              <Button type="button" size="sm" variant="outline" onClick={addSubtask} disabled={!newSubtaskText.trim()} className="shrink-0 h-8">
+                <Plus className="w-3 h-3" />
+              </Button>
+            </div>
           </div>
 
           {/* Sync with Google Calendar */}

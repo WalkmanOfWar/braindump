@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { TopNavbar } from "@/components/top-navbar";
 import { BottomNav } from "@/components/bottom-nav";
 import { TaskCard } from "@/components/task-card";
@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, ClipboardList, Sparkles, Search, AlertCircle, CheckSquare, Square, Trash2, CheckCheck } from "lucide-react";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { toast } from "sonner";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
 import {
@@ -44,6 +45,9 @@ function toUiTask(t: TaskWithCategory): UiTask {
     categoryId: t.categoryId ?? "osobiste",
     completed: t.done,
     syncWithGoogle: !!t.googleEventId,
+    recurrence: (t.recurrence ?? "none") as import("@/types").Recurrence,
+    recurrenceEnd: t.recurrenceEnd ? new Date(t.recurrenceEnd) : undefined,
+    subtasks: Array.isArray(t.subtasks) ? (t.subtasks as import("@/types").Subtask[]) : undefined,
   };
 }
 
@@ -77,6 +81,13 @@ export default function TasksPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useKeyboardShortcuts([
+    { key: "n", action: () => { setEditingTask(null); setModalOpen(true); } },
+    { key: "/", action: () => searchRef.current?.focus() },
+    { key: "Escape", action: () => { if (selectionMode) toggleSelectionMode(); } },
+  ]);
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -219,6 +230,9 @@ export default function TasksPage() {
           deadline: taskData.deadline?.toISOString(),
           priority: taskData.priority,
           categoryId: taskData.categoryId || null,
+          recurrence: taskData.recurrence,
+          recurrenceEnd: taskData.recurrenceEnd?.toISOString(),
+          subtasks: taskData.subtasks,
         }),
       });
       if (res.ok) {
@@ -238,6 +252,9 @@ export default function TasksPage() {
           deadline: taskData.deadline?.toISOString(),
           priority: taskData.priority,
           categoryId: taskData.categoryId || null,
+          recurrence: taskData.recurrence,
+          recurrenceEnd: taskData.recurrenceEnd?.toISOString(),
+          subtasks: taskData.subtasks,
         }),
       });
       if (res.ok) {
@@ -354,9 +371,10 @@ export default function TasksPage() {
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
+            ref={searchRef}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Szukaj zadań…"
+            placeholder="Szukaj zadań… (naciśnij /)"
             className="pl-9"
           />
         </div>

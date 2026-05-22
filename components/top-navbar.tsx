@@ -8,13 +8,15 @@ import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, CheckSquare, GraduationCap, Calendar, LogOut, Sun, Moon } from 'lucide-react'
+import { PushSubscribeButton } from '@/components/push-subscribe'
+import { LayoutDashboard, CheckSquare, GraduationCap, Calendar, LogOut, Sun, Moon, BarChart2 } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/tasks', label: 'Zadania', icon: CheckSquare },
   { href: '/exams', label: 'Egzaminy', icon: GraduationCap },
   { href: '/calendar', label: 'Kalendarz', icon: Calendar },
+  { href: '/stats', label: 'Statystyki', icon: BarChart2 },
 ]
 
 export function TopNavbar() {
@@ -58,6 +60,8 @@ export function TopNavbar() {
 
         {/* User Section */}
         <div className="flex items-center gap-1">
+          <PushSubscribeButton />
+
           {/* Theme toggle — only render after mount to avoid hydration mismatch */}
           {mounted && (
             <Button

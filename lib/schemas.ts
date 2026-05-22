@@ -1,15 +1,25 @@
 import { z } from "zod";
 
+const SubtaskSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  done: z.boolean(),
+});
+
 export const TaskCreateSchema = z.object({
   title: z.string().min(1, "Tytuł jest wymagany"),
   description: z.string().optional(),
   deadline: z.string().optional().nullable(),
   priority: z.number().int().min(1).max(5).default(3),
   categoryId: z.string().optional().nullable(),
+  recurrence: z.enum(["none", "daily", "weekly", "monthly"]).default("none"),
+  recurrenceEnd: z.string().optional().nullable(),
+  subtasks: z.array(SubtaskSchema).optional().nullable(),
 });
 
 export const TaskUpdateSchema = TaskCreateSchema.partial().extend({
   done: z.boolean().optional(),
+  reminderSentAt: z.string().nullable().optional(),
 });
 
 export const ExamCreateSchema = z.object({

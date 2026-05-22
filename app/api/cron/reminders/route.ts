@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendDeadlineReminder } from "@/lib/mailer";
+import { sendPushToUser } from "@/lib/push";
 
 // Vercel Cron Job — runs daily at 08:00 UTC (10:00 Polish summer time)
 // Protected by CRON_SECRET environment variable
@@ -33,7 +34,14 @@ export async function GET(req: NextRequest) {
     tasks.map(async (task) => {
       if (!task.user.email || !task.deadline) return;
 
-      await sendDeadlineReminder(task.user.email, task.title, task.deadline);
+      await Promise.allSettled([
+        sendDeadlineReminder(task.user.email, task.title, task.deadline),
+        sendPushToUser(task.userId, {
+          title: "⏰ Zbliża się termin",
+          body: `„${task.title}" — za mniej niż 24 h`,
+          url: "/tasks",
+        }),
+      ]);
       await prisma.task.update({
         where: { id: task.id },
         data: { reminderSentAt: now },

@@ -8,7 +8,8 @@ import { TaskCard } from "@/components/task-card";
 import { TaskModal } from "@/components/task-modal";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, CheckCircle2, ListTodo, BookOpen } from "lucide-react";
+import { AlertCircle, CheckCircle2, ListTodo, BookOpen, Sparkles, Loader2, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
 import type { TaskWithCategory, ExamWithSessions, Category, UiTask } from "@/types";
 
@@ -37,6 +38,8 @@ export default function DashboardPage() {
   const [isError, setIsError] = useState(false);
   const [editingTask, setEditingTask] = useState<UiTask | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [brief, setBrief] = useState<string | null>(null);
+  const [briefLoading, setBriefLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -59,6 +62,21 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleFetchBrief = async () => {
+    setBriefLoading(true);
+    try {
+      const res = await fetch("/api/ai/daily-brief", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setBrief(data.brief);
+      }
+    } catch {
+      // silent — widget just stays empty
+    } finally {
+      setBriefLoading(false);
+    }
+  };
 
   const handleToggleComplete = async (id: string, completed: boolean) => {
     const res = await fetch(`/api/tasks/${id}`, {
@@ -224,6 +242,38 @@ export default function DashboardPage() {
       <TopNavbar />
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-8">
+
+        {/* AI Daily Brief */}
+        <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-medium text-primary">
+              <Sparkles className="w-4 h-4" />
+              Plan na dziś
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-muted-foreground"
+              onClick={handleFetchBrief}
+              disabled={briefLoading}
+            >
+              {briefLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : brief ? (
+                <RefreshCw className="w-3.5 h-3.5" />
+              ) : (
+                "Generuj"
+              )}
+            </Button>
+          </div>
+          {brief ? (
+            <p className="text-sm text-foreground leading-relaxed">{brief}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {briefLoading ? "AI analizuje Twoje zadania…" : "Kliknij „Generuj” aby otrzymać spersonalizowany plan na dziś."}
+            </p>
+          )}
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">

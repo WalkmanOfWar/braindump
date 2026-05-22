@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { title, description, deadline, priority, categoryId } = parsed.data;
+  const { title, description, deadline, priority, categoryId, recurrence, recurrenceEnd, subtasks } = parsed.data;
 
   const task = await prisma.task.create({
     data: {
@@ -51,6 +51,9 @@ export async function POST(req: NextRequest) {
       priority,
       categoryId: categoryId ?? null,
       userId: session.user.id,
+      recurrence: recurrence ?? "none",
+      recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
+      subtasks: subtasks ?? undefined,
     },
     include: { category: true },
   });

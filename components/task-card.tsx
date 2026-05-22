@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { MoreHorizontal, Pencil, Trash2, CalendarPlus, CalendarX2, Loader2, AlertTriangle } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, CalendarPlus, CalendarX2, Loader2, AlertTriangle, Repeat } from 'lucide-react'
 import type { UiTask } from '@/types'
 import { getUrgencyLevel, getUrgencyColor, formatDate } from '@/lib/utils'
 
@@ -208,7 +208,34 @@ export function TaskCard({
               />
             ))}
           </div>
+
+          {/* Recurrence badge */}
+          {task.recurrence && task.recurrence !== 'none' && (
+            <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+              <Repeat className="w-3 h-3" />
+              {task.recurrence === 'daily' ? 'dziennie' : task.recurrence === 'weekly' ? 'tygodniowo' : 'miesięcznie'}
+            </span>
+          )}
         </div>
+
+        {/* Subtask progress */}
+        {task.subtasks && task.subtasks.length > 0 && (
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length} podzadań
+              </span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{
+                  width: `${(task.subtasks.filter((s) => s.done).length / task.subtasks.length) * 100}%`
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
     <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
