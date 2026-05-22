@@ -22,8 +22,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ChevronDown, ChevronUp, MoreHorizontal, Trash2, Pencil } from "lucide-react";
+import { ChevronDown, ChevronUp, MoreHorizontal, Trash2, Pencil, Play } from "lucide-react";
 import type { ExamWithSessions } from "@/types";
+import { usePomodoroTimer } from "@/components/pomodoro-timer";
 
 interface ExamCardProps {
   exam: ExamWithSessions;
@@ -47,6 +48,7 @@ function getDaysUntil(date: Date | string): number {
 export function ExamCard({ exam, onToggleSession, onDelete, onEdit }: ExamCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const { start: startPomodoro } = usePomodoroTimer();
 
   const daysUntil = getDaysUntil(exam.examDate);
   const category = exam.category;
@@ -217,6 +219,21 @@ export function ExamCard({ exam, onToggleSession, onDelete, onEdit }: ExamCardPr
                   <span className="inline-flex items-center rounded-md bg-accent/15 text-accent px-2 py-0.5 text-xs font-medium shrink-0">
                     {session.hours}h
                   </span>
+
+                  {/* Pomodoro start button — only on today's pending sessions */}
+                  {sessionIsToday && !session.done && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 shrink-0 text-primary hover:text-primary"
+                      onClick={() =>
+                        startPomodoro({ examTitle: exam.title, topic: session.topic })
+                      }
+                      aria-label="Rozpocznij Pomodoro"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
               );
             })}

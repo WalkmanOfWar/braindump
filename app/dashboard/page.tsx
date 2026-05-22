@@ -8,9 +8,11 @@ import { TaskCard } from "@/components/task-card";
 import { TaskModal } from "@/components/task-modal";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, CheckCircle2, ListTodo, BookOpen, Sparkles, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle2, ListTodo, BookOpen, Sparkles, Loader2, RefreshCw, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
+import { useDeadlineReminders } from "@/hooks/use-deadline-reminders";
+import { usePomodoroTimer } from "@/components/pomodoro-timer";
 import { getTodayStr, toUiTask } from "@/lib/utils";
 import type { TaskWithCategory, ExamWithSessions, Category, UiTask } from "@/types";
 
@@ -123,24 +125,43 @@ export default function DashboardPage() {
   const handleSyncCalendar = useCalendarSync(setTasks);
 
   const handleSave = async (taskData: Partial<UiTask>) => {
-    if (!taskData.id) return;
-    const res = await fetch(`/api/tasks/${taskData.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: taskData.title,
-        description: taskData.description,
-        deadline: taskData.deadline?.toISOString(),
-        priority: taskData.priority,
-        categoryId: taskData.categoryId || null,
-      }),
+    const body = JSON.stringify({
+      title: taskData.title,
+      description: taskData.description,
+      deadline: taskData.deadline?.toISOString(),
+      priority: taskData.priority,
+      categoryId: taskData.categoryId || null,
+      recurrence: taskData.recurrence,
+      recurrenceEnd: taskData.recurrenceEnd?.toISOString(),
+      subtasks: taskData.subtasks,
     });
-    if (res.ok) {
-      const updated: TaskWithCategory = await res.json();
-      setTasks((prev) => prev.map((t) => (t.id === taskData.id ? updated : t)));
-      toast.success("Zadanie zaktualizowane");
+
+    if (taskData.id) {
+      const res = await fetch(`/api/tasks/${taskData.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+      if (res.ok) {
+        const updated: TaskWithCategory = await res.json();
+        setTasks((prev) => prev.map((t) => (t.id === taskData.id ? updated : t)));
+        toast.success("Zadanie zaktualizowane");
+      } else {
+        toast.error("Nie udało się zaktualizować zadania");
+      }
     } else {
-      toast.error("Nie udało się zaktualizować zadania");
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+      if (res.ok) {
+        const created: TaskWithCategory = await res.json();
+        setTasks((prev) => [...prev, created]);
+        toast.success("Zadanie dodane!");
+      } else {
+        toast.error("Nie udało się dodać zadania");
+      }
     }
     setEditingTask(null);
   };
@@ -162,6 +183,9 @@ export default function DashboardPage() {
       return b.priority - a.priority;
     })
     .slice(0, 3);
+
+  useDeadlineReminders(tasks);
+  const { start: startPomodoro } = usePomodoroTimer();
 
   // Stats
   const activeTasks = tasks.filter((t) => !t.done).length;
@@ -347,6 +371,19 @@ export default function DashboardPage() {
                   <span className="inline-flex items-center rounded-md bg-accent/15 text-accent px-2 py-0.5 text-xs font-medium shrink-0">
                     {session.hours}h
                   </span>
+                  {!session.done && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 shrink-0 text-primary hover:text-primary"
+                      onClick={() =>
+                        startPomodoro({ examTitle: session.examTitle, topic: session.topic })
+                      }
+                      aria-label="Rozpocznij Pomodoro"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
