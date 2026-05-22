@@ -382,32 +382,39 @@ export default function TasksPage() {
             >
               <Download className="h-4 w-4" />
             </Button>
-            {/* Three-way view toggle: list → kanban → matrix → list */}
-            <Button
-              variant={viewMode !== "list" ? "default" : "outline"}
-              size="sm"
-              onClick={() =>
-                setViewMode((v) =>
-                  v === "list" ? "kanban" : v === "kanban" ? "matrix" : "list"
-                )
-              }
-              disabled={isLoading}
-              title={
-                viewMode === "list"
-                  ? "Widok kanban"
-                  : viewMode === "kanban"
-                  ? "Macierz Eisenhowera"
-                  : "Widok listy"
-              }
-            >
-              {viewMode === "list" ? (
-                <LayoutGrid className="h-4 w-4" />
-              ) : viewMode === "kanban" ? (
-                <Grid2x2 className="h-4 w-4" />
-              ) : (
+            {/* View mode toggle — separate button per mode */}
+            <div className="flex rounded-md border border-border overflow-hidden">
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="sm"
+                className="rounded-none border-0 px-2.5"
+                onClick={() => setViewMode("list")}
+                disabled={isLoading}
+                title="Lista"
+              >
                 <List className="h-4 w-4" />
-              )}
-            </Button>
+              </Button>
+              <Button
+                variant={viewMode === "kanban" ? "default" : "ghost"}
+                size="sm"
+                className="rounded-none border-0 border-x border-border px-2.5"
+                onClick={() => setViewMode("kanban")}
+                disabled={isLoading}
+                title="Kanban"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "matrix" ? "default" : "ghost"}
+                size="sm"
+                className="rounded-none border-0 px-2.5"
+                onClick={() => setViewMode("matrix")}
+                disabled={isLoading}
+                title="Macierz Eisenhowera"
+              >
+                <Grid2x2 className="h-4 w-4" />
+              </Button>
+            </div>
             {viewMode === "list" && (
               <Button
                 variant={selectionMode ? "default" : "outline"}

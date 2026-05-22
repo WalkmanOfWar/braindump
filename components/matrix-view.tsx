@@ -7,9 +7,11 @@ import {
   DragOverlay,
   DragStartEvent,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -122,8 +124,9 @@ function updatesForQuadrant(
 // ---------------------------------------------------------------------------
 
 function MatrixCard({ task }: { task: TaskWithCategory }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
+    data: { task },
   });
 
   const deadline = task.deadline
@@ -136,20 +139,16 @@ function MatrixCard({ task }: { task: TaskWithCategory }) {
   return (
     <div
       ref={setNodeRef}
+      {...listeners}
       {...attributes}
+      style={{ transform: CSS.Transform.toString(transform) ?? undefined }}
       className={cn(
-        "flex items-start gap-2 p-2.5 bg-background rounded-lg border border-border text-xs select-none cursor-default",
-        isDragging && "opacity-40 ring-2 ring-primary"
+        "flex items-start gap-2 p-2.5 bg-background rounded-lg border border-border text-xs",
+        "touch-none select-none cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-40 ring-2 ring-primary shadow-lg"
       )}
     >
-      <button
-        {...listeners}
-        className="mt-0.5 shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
-        aria-label="Przeciągnij"
-        tabIndex={-1}
-      >
-        <GripVertical className="w-3 h-3" />
-      </button>
+      <GripVertical className="w-3 h-3 mt-0.5 shrink-0 text-muted-foreground/50" />
 
       <div className="flex-1 min-w-0">
         <p className="font-medium text-foreground leading-snug line-clamp-2">
@@ -276,7 +275,8 @@ export function MatrixView({ tasks, onUpdate }: MatrixViewProps) {
   );
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } })
   );
 
   const handleDragStart = ({ active }: DragStartEvent) =>

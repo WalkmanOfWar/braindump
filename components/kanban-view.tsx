@@ -7,10 +7,12 @@ import {
   DragOverlay,
   DragStartEvent,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getTodayStr, getDateStr } from "@/lib/utils";
@@ -122,8 +124,9 @@ function KanbanCard({
   task: TaskWithCategory;
   onEdit: (task: UiTask) => void;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
+    data: { task },
   });
 
   const deadline = task.deadline
@@ -133,34 +136,40 @@ function KanbanCard({
       })
     : null;
 
+  // Whole card is the drag surface (same pattern as calendar DraggableTaskPill)
   return (
     <div
       ref={setNodeRef}
+      {...listeners}
       {...attributes}
+      style={{ transform: CSS.Transform.toString(transform) ?? undefined }}
       className={cn(
-        "group flex items-start gap-2 p-3 bg-background rounded-lg border border-border text-sm cursor-default select-none",
-        isDragging && "opacity-40 ring-2 ring-primary"
+        "flex items-start gap-2 p-3 bg-background rounded-lg border border-border text-sm",
+        "touch-none select-none cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-40 ring-2 ring-primary shadow-lg"
       )}
     >
-      {/* Drag handle */}
-      <button
-        {...listeners}
-        className="mt-0.5 shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
-        aria-label="Przeciągnij"
-        tabIndex={-1}
-      >
-        <GripVertical className="w-3.5 h-3.5" />
-      </button>
+      {/* Decorative grip — not the drag handle, the whole card is */}
+      <GripVertical className="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground/50" />
 
       <div className="flex-1 min-w-0">
-        <p
+        {/* Title is a button so clicking (without dragging) can open edit */}
+        <button
           className={cn(
-            "font-medium text-foreground leading-snug truncate",
-            task.done && "line-through text-muted-foreground"
+            "font-medium text-left w-full leading-snug truncate hover:text-primary transition-colors",
+            task.done ? "line-through text-muted-foreground" : "text-foreground"
           )}
+          // Stop the pointer event from triggering a drag; let it register as a click
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onEdit({
+            id: task.id, title: task.title, description: task.description ?? undefined,
+            deadline: task.deadline ? new Date(task.deadline) : new Date(),
+            priority: task.priority, categoryId: task.categoryId ?? "",
+            completed: task.done, syncWithGoogle: !!task.googleEventId,
+          })}
         >
           {task.title}
-        </p>
+        </button>
         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
           {deadline && (
             <span className="text-xs text-muted-foreground">{deadline}</span>
@@ -300,7 +309,8 @@ export function KanbanView({ tasks, onUpdate, onEdit }: KanbanViewProps) {
   );
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } })
   );
 
   const handleDragStart = ({ active }: DragStartEvent) => {
