@@ -2,6 +2,14 @@ import type { Task, Exam, StudySession, Category } from "@prisma/client";
 
 export type { Task, Exam, StudySession, Category };
 
+export type Recurrence = "none" | "daily" | "weekly" | "monthly";
+
+export type Subtask = {
+  id: string;
+  text: string;
+  done: boolean;
+};
+
 export type UiTask = {
   id: string;
   title: string;
@@ -11,6 +19,9 @@ export type UiTask = {
   categoryId: string;
   completed: boolean;
   syncWithGoogle: boolean;
+  recurrence?: Recurrence;
+  recurrenceEnd?: Date;
+  subtasks?: Subtask[];
 };
 
 export type TaskWithCategory = Task & {
@@ -28,6 +39,9 @@ export type TaskCreateInput = {
   deadline?: string;
   priority?: number;
   categoryId?: string;
+  recurrence?: Recurrence;
+  recurrenceEnd?: string;
+  subtasks?: Subtask[];
 };
 
 export type TaskUpdateInput = Partial<TaskCreateInput> & {

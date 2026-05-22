@@ -11,6 +11,14 @@ async function getTaskOrFail(id: string, userId: string) {
   return task;
 }
 
+function nextRecurrenceDate(deadline: Date, recurrence: string): Date {
+  const d = new Date(deadline);
+  if (recurrence === "daily") d.setDate(d.getDate() + 1);
+  else if (recurrence === "weekly") d.setDate(d.getDate() + 7);
+  else if (recurrence === "monthly") d.setMonth(d.getMonth() + 1);
+  return d;
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -52,7 +60,7 @@ export async function PATCH(
     );
   }
 
-  const { title, description, deadline, priority, categoryId, done } = parsed.data;
+  const { title, description, deadline, priority, categoryId, done, recurrence, recurrenceEnd, subtasks } = parsed.data;
 
   const task = await prisma.task.update({
     where: { id },
@@ -63,9 +71,36 @@ export async function PATCH(
       ...(priority !== undefined ? { priority } : {}),
       ...(categoryId !== undefined ? { categoryId } : {}),
       ...(done !== undefined ? { done, doneAt: done ? new Date() : null } : {}),
+      ...(recurrence !== undefined ? { recurrence } : {}),
+      ...(recurrenceEnd !== undefined ? { recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null } : {}),
+      ...(subtasks !== undefined ? { subtasks: subtasks ?? undefined } : {}),
     },
     include: { category: true },
   });
+
+  // When completing a recurring task, spawn the next occurrence
+  if (done === true && task.recurrence !== "none" && task.deadline) {
+    const nextDeadline = nextRecurrenceDate(new Date(task.deadline), task.recurrence);
+    const withinEnd = !task.recurrenceEnd || nextDeadline <= new Date(task.recurrenceEnd);
+    if (withinEnd) {
+      await prisma.task.create({
+        data: {
+          title: task.title,
+          description: task.description,
+          deadline: nextDeadline,
+          priority: task.priority,
+          categoryId: task.categoryId,
+          userId: task.userId,
+          recurrence: task.recurrence,
+          recurrenceEnd: task.recurrenceEnd,
+          // reset subtasks to all undone for next occurrence
+          subtasks: Array.isArray(task.subtasks)
+            ? (task.subtasks as { id: string; text: string; done: boolean }[]).map((s) => ({ ...s, done: false }))
+            : undefined,
+        },
+      });
+    }
+  }
 
   return NextResponse.json(task);
 }

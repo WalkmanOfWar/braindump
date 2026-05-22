@@ -15,11 +15,12 @@ model User {
   password      String?
   googleTokens  Json?
   createdAt     DateTime   @default(now())
-  tasks        Task[]
-  exams        Exam[]
-  categories   Category[]
-  accounts     Account[]
-  sessions     Session[]
+  tasks             Task[]
+  exams             Exam[]
+  categories        Category[]
+  accounts          Account[]
+  sessions          Session[]
+  pushSubscriptions PushSubscription[]
 }
 
 model Account {
@@ -76,12 +77,25 @@ model Task {
   doneAt          DateTime?
   googleEventId   String?
   reminderSentAt  DateTime?
+  recurrence      String    @default("none") // none | daily | weekly | monthly
+  recurrenceEnd   DateTime?
+  subtasks        Json?     // [{id,text,done}]
   userId          String
   categoryId      String?
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Exam {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'braindump-v1';
+const CACHE_NAME = 'braindump-v2';
 
 // Static assets to pre-cache on install
 const PRECACHE_URLS = [
@@ -31,6 +31,33 @@ self.addEventListener('activate', (event) => {
         Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
       )
       .then(() => self.clients.claim())
+  );
+});
+
+// Push: show notification
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  const data = event.data.json();
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icon.svg',
+      badge: '/icon.svg',
+      data: { url: data.url ?? '/' },
+    })
+  );
+});
+
+// Notification click: focus or open the app
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url ?? '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      const existing = list.find((c) => c.url.includes(url));
+      if (existing) return existing.focus();
+      return clients.openWindow(url);
+    })
   );
 });
 
