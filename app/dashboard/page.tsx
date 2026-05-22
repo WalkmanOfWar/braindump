@@ -67,12 +67,16 @@ export default function DashboardPage() {
     setBriefLoading(true);
     try {
       const res = await fetch("/api/ai/daily-brief", { method: "POST" });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         setBrief(data.brief);
+      } else if (res.status === 503) {
+        toast.error("Brak klucza ANTHROPIC_API_KEY — dodaj go do zmiennych środowiskowych");
+      } else {
+        toast.error(data.error ?? "Nie udało się wygenerować planu");
       }
     } catch {
-      // silent — widget just stays empty
+      toast.error("Błąd połączenia z AI");
     } finally {
       setBriefLoading(false);
     }
