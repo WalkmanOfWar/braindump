@@ -277,7 +277,10 @@ export default function TasksPage() {
 
   const handleAIPrioritize = async () => {
     const activeTasks = tasks.filter((t) => !t.done);
-    if (!activeTasks.length) return;
+    if (!activeTasks.length) {
+      toast.info("Brak aktywnych zadań do priorytetyzacji");
+      return;
+    }
     setAiLoading(true);
     const res = await fetch("/api/ai/prioritize", {
       method: "POST",
@@ -312,8 +315,11 @@ export default function TasksPage() {
         })
       );
       toast.success("Priorytety zaktualizowane przez AI");
+    } else if (res.status === 503) {
+      toast.error("Brak klucza ANTHROPIC_API_KEY — dodaj go do zmiennych środowiskowych");
     } else {
-      toast.error("Błąd AI — spróbuj ponownie");
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Błąd AI — spróbuj ponownie");
     }
     setAiLoading(false);
   };

@@ -14,6 +14,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Brak zadań do priorytetyzacji" }, { status: 400 });
   }
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: "Brak klucza API" }, { status: 503 });
+  }
+
   try {
     const result = await prioritizeTasks(body.tasks);
     return NextResponse.json(result);
