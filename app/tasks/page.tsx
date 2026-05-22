@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, ClipboardList, Sparkles, Search, AlertCircle, CheckSquare, Square, Trash2, CheckCheck, Download, LayoutGrid, List } from "lucide-react";
+import { Plus, ClipboardList, Sparkles, Search, AlertCircle, CheckSquare, Square, Trash2, CheckCheck, Download, LayoutGrid, List, Grid2x2 } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { toast } from "sonner";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
@@ -32,12 +32,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { KanbanView } from "@/components/kanban-view";
+import { MatrixView } from "@/components/matrix-view";
 import { toUiTask } from "@/lib/utils";
 import type { TaskWithCategory, Category, UiTask } from "@/types";
 
 type FilterTab = "all" | "active" | "completed";
 type SortOption = "deadline" | "priority";
-type ViewMode = "list" | "kanban";
+type ViewMode = "list" | "kanban" | "matrix";
 
 function TaskSkeleton() {
   return (
@@ -381,17 +382,30 @@ export default function TasksPage() {
             >
               <Download className="h-4 w-4" />
             </Button>
+            {/* Three-way view toggle: list → kanban → matrix → list */}
             <Button
-              variant={viewMode === "kanban" ? "default" : "outline"}
+              variant={viewMode !== "list" ? "default" : "outline"}
               size="sm"
-              onClick={() => setViewMode((v) => v === "list" ? "kanban" : "list")}
+              onClick={() =>
+                setViewMode((v) =>
+                  v === "list" ? "kanban" : v === "kanban" ? "matrix" : "list"
+                )
+              }
               disabled={isLoading}
-              title={viewMode === "kanban" ? "Widok listy" : "Widok kanban"}
+              title={
+                viewMode === "list"
+                  ? "Widok kanban"
+                  : viewMode === "kanban"
+                  ? "Macierz Eisenhowera"
+                  : "Widok listy"
+              }
             >
-              {viewMode === "kanban" ? (
-                <List className="h-4 w-4" />
-              ) : (
+              {viewMode === "list" ? (
                 <LayoutGrid className="h-4 w-4" />
+              ) : viewMode === "kanban" ? (
+                <Grid2x2 className="h-4 w-4" />
+              ) : (
+                <List className="h-4 w-4" />
               )}
             </Button>
             {viewMode === "list" && (
@@ -507,6 +521,12 @@ export default function TasksPage() {
           </div>
         ) : viewMode === "kanban" ? (
           <KanbanView
+            tasks={tasks}
+            onUpdate={handleKanbanUpdate}
+            onEdit={handleEdit}
+          />
+        ) : viewMode === "matrix" ? (
+          <MatrixView
             tasks={tasks}
             onUpdate={handleKanbanUpdate}
             onEdit={handleEdit}
