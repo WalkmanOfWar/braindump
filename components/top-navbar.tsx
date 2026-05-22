@@ -9,15 +9,20 @@ import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { PushSubscribeButton } from '@/components/push-subscribe'
-import { LayoutDashboard, CheckSquare, GraduationCap, Calendar, LogOut, Sun, Moon, BarChart2 } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, GraduationCap, Calendar, LogOut, Sun, Moon, BarChart2, Search } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/today', label: 'Dziś', icon: Sun },
   { href: '/tasks', label: 'Zadania', icon: CheckSquare },
   { href: '/exams', label: 'Egzaminy', icon: GraduationCap },
   { href: '/calendar', label: 'Kalendarz', icon: Calendar },
   { href: '/stats', label: 'Statystyki', icon: BarChart2 },
 ]
+
+function openPalette() {
+  window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }));
+}
 
 export function TopNavbar() {
   const pathname = usePathname()
@@ -60,6 +65,29 @@ export function TopNavbar() {
 
         {/* User Section */}
         <div className="flex items-center gap-1">
+          {/* Cmd+K search trigger — dispatches the synthetic event that CommandPalette listens for */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-foreground h-8 px-2 text-xs rounded-md border border-border/50"
+            onClick={openPalette}
+            title="Szybkie wyszukiwanie"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span>Szukaj</span>
+            <kbd className="ml-1 pointer-events-none inline-flex h-4 select-none items-center gap-1 rounded border border-border bg-muted px-1 font-mono text-[10px] opacity-70">
+              ⌘K
+            </kbd>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="md:hidden h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+            onClick={openPalette}
+            title="Szukaj"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
           <PushSubscribeButton />
 
           {/* Theme toggle — only render after mount to avoid hydration mismatch */}

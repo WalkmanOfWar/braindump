@@ -11,24 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, CheckCircle2, ListTodo, BookOpen, Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
+import { getTodayStr, toUiTask } from "@/lib/utils";
 import type { TaskWithCategory, ExamWithSessions, Category, UiTask } from "@/types";
-
-function getTodayStr() {
-  return new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD local time
-}
-
-function toUiTask(t: TaskWithCategory): UiTask {
-  return {
-    id: t.id,
-    title: t.title,
-    description: t.description ?? undefined,
-    deadline: t.deadline ? new Date(t.deadline) : new Date(),
-    priority: t.priority,
-    categoryId: t.categoryId ?? "",
-    completed: t.done,
-    syncWithGoogle: !!t.googleEventId,
-  };
-}
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<TaskWithCategory[]>([]);

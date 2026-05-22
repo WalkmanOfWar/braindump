@@ -30,26 +30,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toUiTask } from "@/lib/utils";
 import type { TaskWithCategory, Category, UiTask } from "@/types";
 
 type FilterTab = "all" | "active" | "completed";
 type SortOption = "deadline" | "priority";
-
-function toUiTask(t: TaskWithCategory): UiTask {
-  return {
-    id: t.id,
-    title: t.title,
-    description: t.description ?? undefined,
-    deadline: t.deadline ? new Date(t.deadline) : new Date(),
-    priority: t.priority,
-    categoryId: t.categoryId ?? "osobiste",
-    completed: t.done,
-    syncWithGoogle: !!t.googleEventId,
-    recurrence: (t.recurrence ?? "none") as import("@/types").Recurrence,
-    recurrenceEnd: t.recurrenceEnd ? new Date(t.recurrenceEnd) : undefined,
-    subtasks: Array.isArray(t.subtasks) ? (t.subtasks as import("@/types").Subtask[]) : undefined,
-  };
-}
 
 function TaskSkeleton() {
   return (

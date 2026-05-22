@@ -47,5 +47,6 @@ export function useGlobalShortcuts() {
     { key: "3", action: () => router.push("/exams") },
     { key: "4", action: () => router.push("/calendar") },
     { key: "5", action: () => router.push("/stats") },
+    { key: "t", action: () => router.push("/today") },
   ]);
 }

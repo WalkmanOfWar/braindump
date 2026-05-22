@@ -4,6 +4,7 @@ import { SessionProvider } from "@/components/session-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ServiceWorkerRegistration } from "@/components/sw-register";
 import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts-provider";
+import { CommandPalette } from "@/components/command-palette";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -55,6 +56,7 @@ export default function RootLayout({
             <Toaster richColors position="bottom-right" />
             <ServiceWorkerRegistration />
             <KeyboardShortcutsProvider />
+            <CommandPalette />
           </SessionProvider>
         </ThemeProvider>
       </body>
