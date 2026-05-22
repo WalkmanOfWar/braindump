@@ -3,10 +3,10 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, CheckSquare, GraduationCap, Calendar, BarChart2 } from 'lucide-react'
+import { Sun, CheckSquare, GraduationCap, Calendar, BarChart2 } from 'lucide-react'
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/today', label: 'Dziś', icon: Sun },
   { href: '/tasks', label: 'Zadania', icon: CheckSquare },
   { href: '/exams', label: 'Egzaminy', icon: GraduationCap },
   { href: '/calendar', label: 'Kalendarz', icon: Calendar },
