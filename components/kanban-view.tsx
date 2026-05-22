@@ -143,7 +143,7 @@ function KanbanCard({
         "flex items-center gap-2 px-3 py-2.5 bg-card rounded-lg border border-l-[3px] shadow-sm",
         "touch-none select-none cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md",
         col.cardBorder,
-        isDragging && "opacity-30"
+        isDragging && "opacity-0"
       )}
     >
       <GripVertical className="w-3.5 h-3.5 shrink-0 text-muted-foreground/40" />
