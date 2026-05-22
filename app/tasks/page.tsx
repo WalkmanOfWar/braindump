@@ -16,10 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, ClipboardList, Sparkles, Search, AlertCircle, CheckSquare, Square, Trash2, CheckCheck } from "lucide-react";
+import { Plus, ClipboardList, Sparkles, Search, AlertCircle, CheckSquare, Square, Trash2, CheckCheck, Download, LayoutGrid, List } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { toast } from "sonner";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
+import { useDeadlineReminders } from "@/hooks/use-deadline-reminders";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,11 +31,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { KanbanView } from "@/components/kanban-view";
 import { toUiTask } from "@/lib/utils";
 import type { TaskWithCategory, Category, UiTask } from "@/types";
 
 type FilterTab = "all" | "active" | "completed";
 type SortOption = "deadline" | "priority";
+type ViewMode = "list" | "kanban";
 
 function TaskSkeleton() {
   return (
@@ -66,6 +69,7 @@ export default function TasksPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const searchRef = useRef<HTMLInputElement>(null);
 
   useKeyboardShortcuts([
@@ -151,6 +155,47 @@ export default function TasksPage() {
   };
 
   const handleSyncCalendar = useCalendarSync(setTasks);
+  useDeadlineReminders(tasks);
+
+  const handleExportCsv = () => {
+    const headers = ["Tytuł", "Opis", "Termin", "Priorytet", "Kategoria", "Status"];
+    const rows = filtered.map((t) => [
+      t.title,
+      t.description ?? "",
+      t.deadline ? new Date(t.deadline).toLocaleDateString("pl-PL") : "",
+      String(t.priority),
+      t.category?.name ?? "",
+      t.done ? "Ukończone" : "Aktywne",
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    // BOM prefix so Excel opens Polish characters correctly
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `zadania-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleKanbanUpdate = async (
+    id: string,
+    updates: { done?: boolean; deadline?: string | null }
+  ) => {
+    const res = await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    if (res.ok) {
+      const updated: TaskWithCategory = await res.json();
+      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+    } else {
+      toast.error("Nie udało się przenieść zadania");
+    }
+  };
 
   const toggleSelectionMode = () => {
     setSelectionMode((prev) => !prev);
@@ -328,24 +373,48 @@ export default function TasksPage() {
               {aiLoading ? "AI…" : "AI"}
             </Button>
             <Button
-              variant={selectionMode ? "default" : "outline"}
+              variant="outline"
               size="sm"
-              onClick={toggleSelectionMode}
+              onClick={handleExportCsv}
               disabled={isLoading || filtered.length === 0}
-              title="Zaznacz zadania"
+              title="Pobierz CSV"
             >
-              {selectionMode ? (
-                <>
-                  <Square className="h-4 w-4 mr-1" />
-                  Anuluj
-                </>
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "kanban" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode((v) => v === "list" ? "kanban" : "list")}
+              disabled={isLoading}
+              title={viewMode === "kanban" ? "Widok listy" : "Widok kanban"}
+            >
+              {viewMode === "kanban" ? (
+                <List className="h-4 w-4" />
               ) : (
-                <>
-                  <CheckSquare className="h-4 w-4 mr-1" />
-                  Zaznacz
-                </>
+                <LayoutGrid className="h-4 w-4" />
               )}
             </Button>
+            {viewMode === "list" && (
+              <Button
+                variant={selectionMode ? "default" : "outline"}
+                size="sm"
+                onClick={toggleSelectionMode}
+                disabled={isLoading || filtered.length === 0}
+                title="Zaznacz zadania"
+              >
+                {selectionMode ? (
+                  <>
+                    <Square className="h-4 w-4 mr-1" />
+                    Anuluj
+                  </>
+                ) : (
+                  <>
+                    <CheckSquare className="h-4 w-4 mr-1" />
+                    Zaznacz
+                  </>
+                )}
+              </Button>
+            )}
             {!selectionMode && (
               <Button
                 onClick={() => { setEditingTask(null); setModalOpen(true); }}
@@ -436,6 +505,12 @@ export default function TasksPage() {
               </button>
             </p>
           </div>
+        ) : viewMode === "kanban" ? (
+          <KanbanView
+            tasks={tasks}
+            onUpdate={handleKanbanUpdate}
+            onEdit={handleEdit}
+          />
         ) : filtered.length > 0 ? (
           <div className="space-y-2">
             {filtered.map((task) => (

@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ServiceWorkerRegistration } from "@/components/sw-register";
 import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts-provider";
 import { CommandPalette } from "@/components/command-palette";
+import { PomodoroProvider } from "@/components/pomodoro-timer";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -52,11 +53,13 @@ export default function RootLayout({
       <body className="font-sans antialiased bg-background">
         <ThemeProvider>
           <SessionProvider>
-            {children}
-            <Toaster richColors position="bottom-right" />
-            <ServiceWorkerRegistration />
-            <KeyboardShortcutsProvider />
-            <CommandPalette />
+            <PomodoroProvider>
+              {children}
+              <Toaster richColors position="bottom-right" />
+              <ServiceWorkerRegistration />
+              <KeyboardShortcutsProvider />
+              <CommandPalette />
+            </PomodoroProvider>
           </SessionProvider>
         </ThemeProvider>
       </body>
