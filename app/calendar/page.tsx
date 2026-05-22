@@ -97,9 +97,11 @@ function isToday(date: Date): boolean {
 function DraggableTaskPill({
   task,
   onOpen,
+  compact = false,
 }: {
   task: TaskWithCategory;
   onOpen: () => void;
+  compact?: boolean;
 }) {
   const color = task.category?.color ?? "#888888";
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -109,7 +111,9 @@ function DraggableTaskPill({
     backgroundColor: `${color}30`,
     color,
     transform: transform ? CSS.Transform.toString(transform) : undefined,
-    opacity: isDragging ? 0.4 : 1,
+    // opacity-0: the DragOverlay already renders the pill following the cursor;
+    // keeping the source visible at any opacity creates an ugly double-card.
+    opacity: isDragging ? 0 : 1,
     cursor: isDragging ? "grabbing" : "grab",
   };
 
@@ -117,11 +121,14 @@ function DraggableTaskPill({
     <div
       ref={setNodeRef}
       style={style}
-      className="w-full text-left px-1.5 py-1 rounded text-xs truncate flex items-center gap-1 touch-none select-none"
+      className={cn(
+        "w-full text-left rounded truncate flex items-center gap-1 touch-none select-none",
+        compact ? "px-1 py-0.5 text-[10px]" : "px-1.5 py-1 text-xs"
+      )}
       {...listeners}
       {...attributes}
     >
-      <GripVertical className="h-3 w-3 shrink-0 opacity-40" />
+      {!compact && <GripVertical className="h-3 w-3 shrink-0 opacity-40" />}
       {task.done && (
         <span className="w-1.5 h-1.5 rounded-full bg-urgency-low shrink-0" />
       )}
@@ -280,21 +287,23 @@ export default function CalendarPage() {
     if (!over) return;
 
     const taskId = active.id as string;
-    const targetIso = over.id as string;
+    // over.id is "YYYY-MM-DD" (sv-SE format) — parse as local date to avoid
+    // UTC-offset shift that toISOString() would introduce (e.g. UTC+2 → prev day)
+    const [y, m, d] = (over.id as string).split("-").map(Number);
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    // If dropped on the same day, do nothing
-    if (task.deadline && sameDay(task.deadline, new Date(targetIso))) return;
-
-    // Build new deadline: keep existing time-of-day if present, otherwise 09:00
-    const newDeadline = new Date(targetIso);
+    // Build new deadline in local time; preserve existing time-of-day if set
+    const newDeadline = new Date(y, m - 1, d);
     if (task.deadline) {
       const existing = new Date(task.deadline);
       newDeadline.setHours(existing.getHours(), existing.getMinutes(), 0, 0);
     } else {
       newDeadline.setHours(9, 0, 0, 0);
     }
+
+    // If dropped on the same day, do nothing
+    if (task.deadline && sameDay(task.deadline, newDeadline)) return;
 
     // Restore only this task's deadline on failure — avoids reverting concurrent updates
     const originalDeadline = task.deadline;
@@ -380,13 +389,14 @@ export default function CalendarPage() {
           {rangeLabel}
         </p>
 
-        {viewMode === "week" ? (
-          /* ── Week view with drag-to-reschedule ── */
-          <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
+        {/* Single DndContext covers both views so drag works in month too */}
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          {viewMode === "week" ? (
+            /* ── Week view ── */
             <div className="grid grid-cols-7 gap-1 sm:gap-2">
               {/* Day headers */}
               {weekDays.map((day, index) => (
@@ -400,27 +410,18 @@ export default function CalendarPage() {
                   <div className="text-xs font-medium text-muted-foreground">
                     {DAYS_PL[index]}
                   </div>
-                  <div
-                    className={cn(
-                      "text-lg font-semibold",
-                      isToday(day) ? "text-accent-foreground" : "text-foreground"
-                    )}
-                  >
+                  <div className={cn("text-lg font-semibold", isToday(day) ? "text-accent-foreground" : "text-foreground")}>
                     {day.getDate()}
                   </div>
                 </div>
               ))}
 
-              {/* Droppable day cells */}
+              {/* Droppable day cells — ID is YYYY-MM-DD (sv-SE) to avoid UTC-shift */}
               {weekDays.map((day) => {
                 const items = getItemsForDay(day);
-                const dayIso = day.toISOString();
+                const dayKey = day.toLocaleDateString("sv-SE");
                 return (
-                  <DroppableDayCell
-                    key={dayIso}
-                    dayIso={dayIso}
-                    todayDay={isToday(day)}
-                  >
+                  <DroppableDayCell key={dayKey} dayIso={dayKey} todayDay={isToday(day)}>
                     <div className="space-y-1">
                       {items.slice(0, 4).map((item, i) => {
                         if (item.type === "task") {
@@ -428,139 +429,111 @@ export default function CalendarPage() {
                             <DraggableTaskPill
                               key={`task-${item.data.id}-${i}`}
                               task={item.data}
-                              onOpen={() => {
-                                setSelectedItem(item);
-                                setSheetOpen(true);
-                              }}
+                              onOpen={() => { setSelectedItem(item); setSheetOpen(true); }}
                             />
                           );
-                        } else {
-                          const session = item.data;
-                          return (
-                            <button
-                              key={`session-${session.id}-${i}`}
-                              onClick={() => {
-                                setSelectedItem(item);
-                                setSheetOpen(true);
-                              }}
-                              className={cn(
-                                "w-full text-left px-1.5 py-1 rounded text-xs truncate flex items-center gap-1 hover:opacity-80 transition-opacity",
-                                session.done
-                                  ? "bg-accent/20 text-accent line-through opacity-60"
-                                  : "bg-accent/20 text-accent"
-                              )}
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-                              <span className="truncate">{session.topic}</span>
-                            </button>
-                          );
                         }
+                        const session = item.data;
+                        return (
+                          <button
+                            key={`session-${session.id}-${i}`}
+                            onClick={() => { setSelectedItem(item); setSheetOpen(true); }}
+                            className={cn(
+                              "w-full text-left px-1.5 py-1 rounded text-xs truncate flex items-center gap-1 hover:opacity-80 transition-opacity",
+                              session.done ? "bg-accent/20 text-accent line-through opacity-60" : "bg-accent/20 text-accent"
+                            )}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+                            <span className="truncate">{session.topic}</span>
+                          </button>
+                        );
                       })}
                       {items.length > 4 && (
-                        <div className="text-xs text-muted-foreground px-1">
-                          +{items.length - 4} więcej
-                        </div>
+                        <div className="text-xs text-muted-foreground px-1">+{items.length - 4} więcej</div>
                       )}
                     </div>
                   </DroppableDayCell>
                 );
               })}
             </div>
+          ) : (
+            /* ── Month view — droppable cells + draggable task pills ── */
+            <div>
+              <div className="grid grid-cols-7 mb-1">
+                {DAYS_PL.map((d) => (
+                  <div key={d} className="text-center text-xs font-medium text-muted-foreground py-2">{d}</div>
+                ))}
+              </div>
 
-            {/* Drag overlay — shown while dragging */}
-            <DragOverlay dropAnimation={null}>
-              {activeTask && (
-                <div
-                  className="px-2 py-1 rounded text-xs font-medium shadow-lg border border-border bg-card text-foreground max-w-[120px] truncate"
-                  style={{ opacity: 0.95 }}
-                >
-                  {activeTask.title}
-                </div>
-              )}
-            </DragOverlay>
-          </DndContext>
-        ) : (
-          /* ── Month view (read-only, no drag) ── */
-          <div>
-            {/* Day-of-week header row */}
-            <div className="grid grid-cols-7 mb-1">
-              {DAYS_PL.map((d) => (
-                <div key={d} className="text-center text-xs font-medium text-muted-foreground py-2">
-                  {d}
-                </div>
-              ))}
-            </div>
-
-            {/* 6-week grid: gap-px + bg-border gives a hairline grid effect */}
-            <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden border border-border">
-              {monthGridDays.map((day, i) => {
-                const items = getItemsForDay(day);
-                const inMonth = day.getMonth() === currentDate.getMonth();
-                return (
-                  <div
-                    key={i}
-                    className={cn(
-                      "min-h-[80px] sm:min-h-[96px] p-1 bg-card",
-                      !inMonth && "bg-muted/20",
-                      isToday(day) && "bg-accent/10"
-                    )}
-                  >
-                    {/* Day number */}
-                    <div
-                      className={cn(
-                        "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-0.5",
-                        isToday(day)
-                          ? "bg-primary text-primary-foreground"
-                          : inMonth
-                            ? "text-foreground"
-                            : "text-muted-foreground/40"
-                      )}
-                    >
-                      {day.getDate()}
-                    </div>
-
-                    {/* Event pills */}
-                    <div className="space-y-0.5">
-                      {items.slice(0, 2).map((item, j) => {
-                        if (item.type === "task") {
-                          const color = item.data.category?.color ?? "#888888";
-                          return (
-                            <button
-                              key={`m-task-${item.data.id}-${j}`}
-                              onClick={() => { setSelectedItem(item); setSheetOpen(true); }}
-                              className="w-full text-left px-1 py-0.5 rounded text-[10px] leading-tight truncate hover:opacity-80 transition-opacity"
-                              style={{ backgroundColor: `${color}30`, color }}
-                            >
-                              {item.data.title}
-                            </button>
-                          );
-                        } else {
-                          return (
-                            <button
-                              key={`m-sess-${item.data.id}-${j}`}
-                              onClick={() => { setSelectedItem(item); setSheetOpen(true); }}
-                              className={cn(
-                                "w-full text-left px-1 py-0.5 rounded text-[10px] leading-tight truncate bg-accent/20 text-accent hover:opacity-80 transition-opacity",
-                                item.data.done && "line-through opacity-50"
-                              )}
-                            >
-                              {item.data.topic}
-                            </button>
-                          );
-                        }
-                      })}
-                      {items.length > 2 && (
-                        <div className="text-[10px] text-muted-foreground px-0.5">
-                          +{items.length - 2}
+              <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden border border-border">
+                {monthGridDays.map((day, i) => {
+                  const items = getItemsForDay(day);
+                  const inMonth = day.getMonth() === currentDate.getMonth();
+                  const dayKey = day.toLocaleDateString("sv-SE");
+                  return (
+                    <DroppableDayCell key={i} dayIso={dayKey} todayDay={isToday(day)}>
+                      <div className={cn(
+                        "min-h-[80px] sm:min-h-[96px]",
+                        !inMonth && "opacity-40"
+                      )}>
+                        {/* Day number */}
+                        <div className={cn(
+                          "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-0.5",
+                          isToday(day) ? "bg-primary text-primary-foreground" : "text-foreground"
+                        )}>
+                          {day.getDate()}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+
+                        {/* Event pills */}
+                        <div className="space-y-0.5">
+                          {items.slice(0, 2).map((item, j) => {
+                            if (item.type === "task") {
+                              return (
+                                <DraggableTaskPill
+                                  key={`m-task-${item.data.id}-${j}`}
+                                  task={item.data}
+                                  compact
+                                  onOpen={() => { setSelectedItem(item); setSheetOpen(true); }}
+                                />
+                              );
+                            }
+                            return (
+                              <button
+                                key={`m-sess-${item.data.id}-${j}`}
+                                onClick={() => { setSelectedItem(item); setSheetOpen(true); }}
+                                className={cn(
+                                  "w-full text-left px-1 py-0.5 rounded text-[10px] leading-tight truncate bg-accent/20 text-accent hover:opacity-80 transition-opacity",
+                                  item.data.done && "line-through opacity-50"
+                                )}
+                              >
+                                {item.data.topic}
+                              </button>
+                            );
+                          })}
+                          {items.length > 2 && (
+                            <div className="text-[10px] text-muted-foreground px-0.5">+{items.length - 2}</div>
+                          )}
+                        </div>
+                      </div>
+                    </DroppableDayCell>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Drag overlay — outside both views so it renders in both modes */}
+          <DragOverlay dropAnimation={null}>
+            {activeTask && (
+              <div
+                className="px-2 py-1 rounded text-xs font-semibold shadow-xl border border-primary/40 bg-card text-foreground max-w-[140px] truncate rotate-1"
+                style={{ color: activeTask.category?.color ?? undefined }}
+              >
+                {activeTask.title}
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
 
         <div className="mt-6 flex items-center gap-4 flex-wrap">
           <span className="text-xs text-muted-foreground">Legenda:</span>
@@ -572,11 +545,9 @@ export default function CalendarPage() {
             <div className="w-3 h-3 rounded bg-foreground/20" />
             <span className="text-xs text-muted-foreground">Zadanie</span>
           </div>
-          {viewMode === "week" && (
-            <span className="text-xs text-muted-foreground ml-2 hidden sm:inline">
-              — przeciągnij zadanie aby zmienić termin
-            </span>
-          )}
+          <span className="text-xs text-muted-foreground ml-2 hidden sm:inline">
+            — przeciągnij zadanie aby zmienić termin
+          </span>
         </div>
       </main>
 
