@@ -19,7 +19,10 @@
       "Bash(node -e \"require.resolve\\('next-auth/providers'\\)\")",
       "Bash(where gh *)",
       "Bash(del \"C:\\\\GithubProj\\\\braindump\\\\middleware.ts\")",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(npx prisma *)",
+      "Bash(npx dotenv *)",
+      "Bash(set DATABASE_URL=postgresql://postgres.isajdsjaxybinjqlxzsc:Braindump2024%21@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true)"
     ]
   }
 }

@@ -16,7 +16,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Protect app routes — redirect to login with callbackUrl
-  const protectedPaths = ["/dashboard", "/today", "/tasks", "/exams", "/calendar", "/stats"];
+  const protectedPaths = ["/dashboard", "/today", "/tasks", "/exams", "/calendar", "/stats", "/braindump", "/review"];
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
 
   if (isProtected && !token) {
@@ -36,6 +36,8 @@ export const config = {
     "/exams/:path*",
     "/calendar/:path*",
     "/stats/:path*",
+    "/braindump/:path*",
+    "/review/:path*",
     "/login",
     "/register",
   ],
