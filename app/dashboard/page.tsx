@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, CheckCircle2, ListTodo, BookOpen, Sparkles, Loader2, RefreshCw, Play, Target, Timer } from "lucide-react";
 import { useFocusMode } from "@/components/focus-mode";
+import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { Button } from "@/components/ui/button";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
 import { useDeadlineReminders } from "@/hooks/use-deadline-reminders";
@@ -29,6 +30,7 @@ export default function DashboardPage() {
   const [briefLoading, setBriefLoading] = useState(false);
   const [focusRec, setFocusRec] = useState<{ taskId: string; title: string; estimatedMinutes: number | null; reason: string } | null>(null);
   const [focusRecLoading, setFocusRecLoading] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const { startFocus } = useFocusMode();
 
   const fetchData = useCallback(async () => {
@@ -39,9 +41,14 @@ export default function DashboardPage() {
         fetch("/api/categories"),
       ]);
       if (!tasksRes.ok || !examsRes.ok || !catsRes.ok) throw new Error();
-      setTasks(await tasksRes.json());
+      const fetchedTasks = await tasksRes.json();
+      setTasks(fetchedTasks);
       setExams(await examsRes.json());
       setCategories(await catsRes.json());
+      // Show onboarding for brand-new users who have no tasks and haven't dismissed it
+      if (fetchedTasks.length === 0 && !localStorage.getItem("onboarding-done")) {
+        setShowOnboarding(true);
+      }
     } catch {
       setIsError(true);
     } finally {
@@ -469,6 +476,16 @@ export default function DashboardPage() {
         onSave={handleSave}
         onCategoryCreated={(cat) => setCategories((prev) => [...prev, cat])}
       />
+
+      {showOnboarding && (
+        <OnboardingWizard
+          onComplete={() => {
+            localStorage.setItem("onboarding-done", "1");
+            setShowOnboarding(false);
+            fetchData();
+          }}
+        />
+      )}
     </div>
   );
 }

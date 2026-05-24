@@ -22,6 +22,7 @@ model User {
   sessions          Session[]
   pushSubscriptions PushSubscription[]
   habits            Habit[]
+  goals             Goal[]
 }
 
 model Account {
@@ -84,10 +85,27 @@ model Task {
   estimatedMinutes Int?      // e.g. 15, 30, 60, 120
   userId           String
   categoryId       String?
+  goalId           String?
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id])
+  goal     Goal?     @relation(fields: [goalId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Goal {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  emoji       String    @default("🎯")
+  color       String    @default("#3b82f6")
+  deadline    DateTime?
+  archivedAt  DateTime?
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Habit {

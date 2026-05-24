@@ -49,9 +49,12 @@ type CalendarItem =
   | { type: "task"; data: TaskWithCategory }
   | { type: "session"; data: StudySession & { examTitle: string } };
 
-type ViewMode = "week" | "month";
+type ViewMode = "week" | "month" | "blocks";
 
 const DAYS_PL = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
+
+// Hours to display in time-blocks view (8:00 – 22:00)
+const BLOCK_HOURS = Array.from({ length: 15 }, (_, i) => i + 8);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Date helpers
@@ -392,6 +395,152 @@ function MonthCell({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Time blocks view — hour-slot droppable rows
+// ─────────────────────────────────────────────────────────────────────────────
+
+function HourSlot({
+  dateKey,
+  hour,
+  tasks,
+  onOpenItem,
+}: {
+  dateKey: string;
+  hour: number;
+  tasks: TaskWithCategory[];
+  onOpenItem: (item: CalendarItem) => void;
+}) {
+  const slotId = `${dateKey}T${String(hour).padStart(2, "0")}`;
+  const { setNodeRef, isOver } = useDroppable({ id: slotId });
+  const label = `${String(hour).padStart(2, "0")}:00`;
+  const isCurrentHour = hour === new Date().getHours() && dateKey === new Date().toLocaleDateString("sv-SE");
+
+  return (
+    <div className="flex gap-3 group min-h-[52px]">
+      {/* Time label */}
+      <div className="w-12 shrink-0 pt-1.5 text-right">
+        <span className={cn(
+          "text-xs font-mono",
+          isCurrentHour ? "text-primary font-semibold" : "text-muted-foreground/60"
+        )}>
+          {label}
+        </span>
+      </div>
+
+      {/* Drop zone */}
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "flex-1 border-t border-border/50 pt-1.5 pb-1 space-y-1 transition-colors duration-150 rounded-r-lg px-1",
+          isOver && "bg-primary/8 border-primary/30",
+          isCurrentHour && "border-primary/40"
+        )}
+      >
+        {tasks.map(task => (
+          <DraggableTaskCard key={task.id} task={task} onOpen={() => onOpenItem({ type: "task", data: task })} />
+        ))}
+        {tasks.length === 0 && (
+          <div className={cn(
+            "h-5 rounded transition-colors",
+            isOver ? "bg-primary/10" : "group-hover:bg-muted/30"
+          )} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TimeBlocksView({
+  currentDate,
+  tasks,
+  onOpenItem,
+  onNavigate,
+}: {
+  currentDate: Date;
+  tasks: TaskWithCategory[];
+  onOpenItem: (item: CalendarItem) => void;
+  onNavigate: (dir: -1 | 1) => void;
+}) {
+  const dateKey = currentDate.toLocaleDateString("sv-SE");
+  const today = isToday(currentDate);
+  const dayLabel = currentDate.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" });
+
+  // Tasks for this day, grouped by their deadline hour
+  const tasksByHour = useMemo(() => {
+    const map = new Map<number, TaskWithCategory[]>();
+    BLOCK_HOURS.forEach(h => map.set(h, []));
+
+    tasks.forEach(task => {
+      if (!task.deadline) return;
+      const d = new Date(task.deadline);
+      if (d.toLocaleDateString("sv-SE") !== dateKey) return;
+      const h = d.getHours();
+      const slot = BLOCK_HOURS.includes(h) ? h : BLOCK_HOURS[0];
+      map.set(slot, [...(map.get(slot) ?? []), task]);
+    });
+
+    return map;
+  }, [tasks, dateKey]);
+
+  // Tasks with no deadline, shown in an "unscheduled" panel
+  const unscheduled = tasks.filter(t => !t.deadline && !t.done).slice(0, 10);
+
+  return (
+    <div className="flex gap-4">
+      {/* Day column */}
+      <div className="flex-1 min-w-0">
+        {/* Day header */}
+        <div className={cn(
+          "flex items-center justify-between px-4 py-3 rounded-xl border mb-4",
+          today ? "bg-primary/5 border-primary/30" : "bg-card border-border"
+        )}>
+          <button onClick={() => onNavigate(-1)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <div className="text-center">
+            <p className={cn("font-semibold capitalize", today && "text-primary")}>{dayLabel}</p>
+            {today && <p className="text-xs text-primary/70 mt-0.5">Dzisiaj</p>}
+          </div>
+          <button onClick={() => onNavigate(1)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Hour slots */}
+        <div className="space-y-0">
+          {BLOCK_HOURS.map(hour => (
+            <HourSlot
+              key={hour}
+              dateKey={dateKey}
+              hour={hour}
+              tasks={tasksByHour.get(hour) ?? []}
+              onOpenItem={onOpenItem}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Unscheduled tasks sidebar */}
+      <div className="w-52 shrink-0 hidden lg:block">
+        <div className="bg-card border border-border rounded-xl p-3 sticky top-20">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Niezaplanowane
+          </p>
+          {unscheduled.length === 0 ? (
+            <p className="text-xs text-muted-foreground/60">Brak zadań bez terminu</p>
+          ) : (
+            <div className="space-y-1.5">
+              {unscheduled.map(task => (
+                <DraggableTaskCard key={task.id} task={task} onOpen={() => onOpenItem({ type: "task", data: task })} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Drag overlay card
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -453,14 +602,16 @@ export default function CalendarPage() {
   const goBack = () => {
     const d = new Date(currentDate);
     if (viewMode === "week") d.setDate(d.getDate() - 7);
-    else d.setMonth(d.getMonth() - 1);
+    else if (viewMode === "month") d.setMonth(d.getMonth() - 1);
+    else d.setDate(d.getDate() - 1);
     setCurrentDate(d);
   };
 
   const goForward = () => {
     const d = new Date(currentDate);
     if (viewMode === "week") d.setDate(d.getDate() + 7);
-    else d.setMonth(d.getMonth() + 1);
+    else if (viewMode === "month") d.setMonth(d.getMonth() + 1);
+    else d.setDate(d.getDate() + 1);
     setCurrentDate(d);
   };
 
@@ -520,18 +671,29 @@ export default function CalendarPage() {
     if (!over) return;
 
     const taskId = active.id as string;
-    // over.id is "YYYY-MM-DD" (sv-SE) — parse as local date to avoid UTC-offset shift
-    const [y, m, d] = (over.id as string).split("-").map(Number);
+    const overId = over.id as string;
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    // Preserve existing time-of-day; default to 09:00 when no deadline set
-    const newDeadline = new Date(y, m - 1, d);
-    if (task.deadline) {
-      const existing = new Date(task.deadline);
-      newDeadline.setHours(existing.getHours(), existing.getMinutes(), 0, 0);
+    // Determine target date and hour.
+    // over.id formats:
+    //   "YYYY-MM-DD"      — day drop (week/month views) — preserve existing time or default 09:00
+    //   "YYYY-MM-DDTHH"  — hour slot drop (blocks view) — set exact hour
+    let newDeadline: Date;
+
+    if (overId.includes("T")) {
+      const [datePart, hourPart] = overId.split("T");
+      const [y, m, d] = datePart.split("-").map(Number);
+      newDeadline = new Date(y, m - 1, d, Number(hourPart), 0, 0, 0);
     } else {
-      newDeadline.setHours(9, 0, 0, 0);
+      const [y, m, d] = overId.split("-").map(Number);
+      newDeadline = new Date(y, m - 1, d);
+      if (task.deadline) {
+        const existing = new Date(task.deadline);
+        newDeadline.setHours(existing.getHours(), existing.getMinutes(), 0, 0);
+      } else {
+        newDeadline.setHours(9, 0, 0, 0);
+      }
     }
 
     if (task.deadline && sameDay(task.deadline, newDeadline)) return;
@@ -593,28 +755,21 @@ export default function CalendarPage() {
               Dziś
             </Button>
             <div className="flex rounded-lg border border-border overflow-hidden">
-              <button
-                onClick={() => setViewMode("week")}
-                className={cn(
-                  "px-3 py-1.5 text-xs font-medium transition-colors",
-                  viewMode === "week"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background text-muted-foreground hover:bg-muted"
-                )}
-              >
-                Tydzień
-              </button>
-              <button
-                onClick={() => setViewMode("month")}
-                className={cn(
-                  "px-3 py-1.5 text-xs font-medium transition-colors border-l border-border",
-                  viewMode === "month"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background text-muted-foreground hover:bg-muted"
-                )}
-              >
-                Miesiąc
-              </button>
+              {(["week", "month", "blocks"] as const).map((mode, i) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-medium transition-colors",
+                    i > 0 && "border-l border-border",
+                    viewMode === mode
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {mode === "week" ? "Tydzień" : mode === "month" ? "Miesiąc" : "Bloki"}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -640,6 +795,18 @@ export default function CalendarPage() {
                 />
               ))}
             </div>
+          ) : viewMode === "blocks" ? (
+            /* ── Blocks view — hour-slot day planner ── */
+            <TimeBlocksView
+              currentDate={currentDate}
+              tasks={tasks}
+              onOpenItem={openItem}
+              onNavigate={(dir) => {
+                const d = new Date(currentDate);
+                d.setDate(d.getDate() + dir);
+                setCurrentDate(d);
+              }}
+            />
           ) : (
             /* ── Month view — clean grid of droppable cells ── */
             <div>
