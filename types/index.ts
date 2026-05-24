@@ -1,8 +1,18 @@
-import type { Task, Exam, StudySession, Category, Habit, HabitCompletion } from "@prisma/client";
+import type { Task, Exam, StudySession, Category, Habit, HabitCompletion, Goal } from "@prisma/client";
 
-export type { Task, Exam, StudySession, Category, Habit, HabitCompletion };
+export type { Task, Exam, StudySession, Category, Habit, HabitCompletion, Goal };
 
 export type HabitWithCompletions = Habit & { completions: HabitCompletion[] };
+
+export type GoalWithTasks = Goal & { tasks: Task[] };
+
+export type GoalCreateInput = {
+  title: string;
+  description?: string;
+  emoji?: string;
+  color?: string;
+  deadline?: string;
+};
 
 export type Recurrence = "none" | "daily" | "weekly" | "monthly";
 
