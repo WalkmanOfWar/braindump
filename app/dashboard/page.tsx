@@ -8,7 +8,8 @@ import { TaskCard } from "@/components/task-card";
 import { TaskModal } from "@/components/task-modal";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, CheckCircle2, ListTodo, BookOpen, Sparkles, Loader2, RefreshCw, Play } from "lucide-react";
+import { AlertCircle, CheckCircle2, ListTodo, BookOpen, Sparkles, Loader2, RefreshCw, Play, Target, Timer } from "lucide-react";
+import { useFocusMode } from "@/components/focus-mode";
 import { Button } from "@/components/ui/button";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
 import { useDeadlineReminders } from "@/hooks/use-deadline-reminders";
@@ -26,6 +27,9 @@ export default function DashboardPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [brief, setBrief] = useState<string | null>(null);
   const [briefLoading, setBriefLoading] = useState(false);
+  const [focusRec, setFocusRec] = useState<{ taskId: string; title: string; estimatedMinutes: number | null; reason: string } | null>(null);
+  const [focusRecLoading, setFocusRecLoading] = useState(false);
+  const { startFocus } = useFocusMode();
 
   const fetchData = useCallback(async () => {
     try {
@@ -65,6 +69,20 @@ export default function DashboardPage() {
       toast.error("Błąd połączenia z AI");
     } finally {
       setBriefLoading(false);
+    }
+  };
+
+  const handleFetchFocusRec = async () => {
+    setFocusRecLoading(true);
+    try {
+      const res = await fetch("/api/ai/focus-recommendation", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) setFocusRec(data);
+      else toast.error(data.error ?? "Nie udało się pobrać rekomendacji");
+    } catch {
+      toast.error("Błąd połączenia z AI");
+    } finally {
+      setFocusRecLoading(false);
     }
   };
 
@@ -283,6 +301,54 @@ export default function DashboardPage() {
           ) : (
             <p className="text-sm text-muted-foreground">
               {briefLoading ? "AI analizuje Twoje zadania…" : "Kliknij „Generuj” aby otrzymać spersonalizowany plan na dziś."}
+            </p>
+          )}
+        </div>
+
+        {/* Co teraz? */}
+        <div className="rounded-xl border border-border bg-card/60 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Target className="w-4 h-4 text-primary" />
+              Co teraz?
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-muted-foreground"
+              onClick={handleFetchFocusRec}
+              disabled={focusRecLoading}
+            >
+              {focusRecLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : focusRec ? <RefreshCw className="w-3.5 h-3.5" /> : "Zapytaj AI"}
+            </Button>
+          </div>
+          {focusRec ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground leading-relaxed">{focusRec.reason}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-foreground text-sm">{focusRec.title}</span>
+                {focusRec.estimatedMinutes && (
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Timer className="w-3 h-3" />
+                    ~{focusRec.estimatedMinutes < 60 ? `${focusRec.estimatedMinutes} min` : `${Math.round(focusRec.estimatedMinutes / 60)}h`}
+                  </span>
+                )}
+              </div>
+              <Button
+                size="sm"
+                className="gap-1.5 h-8"
+                onClick={() => {
+                  const task = tasks.find((t) => t.id === focusRec.taskId);
+                  if (task) startFocus(task);
+                }}
+              >
+                <Target className="w-3.5 h-3.5" />
+                Rozpocznij fokus
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {focusRecLoading ? "AI analizuje Twoje zadania..." : "Kliknij \"Zapytaj AI\" - dostaniesz konkretna rekomendacje co zrobic teraz i dlaczego."}
             </p>
           )}
         </div>

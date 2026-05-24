@@ -21,6 +21,7 @@ model User {
   accounts          Account[]
   sessions          Session[]
   pushSubscriptions PushSubscription[]
+  habits            Habit[]
 }
 
 model Account {
@@ -68,24 +69,47 @@ model Category {
 }
 
 model Task {
-  id              String    @id @default(cuid())
-  title           String
-  description     String?
-  deadline        DateTime?
-  priority        Int       @default(3)
-  done            Boolean   @default(false)
-  doneAt          DateTime?
-  googleEventId   String?
-  reminderSentAt  DateTime?
-  recurrence      String    @default("none") // none | daily | weekly | monthly
-  recurrenceEnd   DateTime?
-  subtasks        Json?     // [{id,text,done}]
-  userId          String
-  categoryId      String?
+  id               String    @id @default(cuid())
+  title            String
+  description      String?
+  deadline         DateTime?
+  priority         Int       @default(3)
+  done             Boolean   @default(false)
+  doneAt           DateTime?
+  googleEventId    String?
+  reminderSentAt   DateTime?
+  recurrence       String    @default("none") // none | daily | weekly | monthly
+  recurrenceEnd    DateTime?
+  subtasks         Json?     // [{id,text,done}]
+  estimatedMinutes Int?      // e.g. 15, 30, 60, 120
+  userId           String
+  categoryId       String?
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Habit {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  emoji       String    @default("✅")
+  color       String    @default("#3b82f6")
+  archivedAt  DateTime?
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completions HabitCompletion[]
+  createdAt   DateTime  @default(now())
+}
+
+model HabitCompletion {
+  id      String   @id @default(cuid())
+  habitId String
+  date    String   // YYYY-MM-DD (local date, sv-SE)
+  habit   Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
 }
 
 model PushSubscription {

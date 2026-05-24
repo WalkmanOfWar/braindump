@@ -1,6 +1,8 @@
-import type { Task, Exam, StudySession, Category } from "@prisma/client";
+import type { Task, Exam, StudySession, Category, Habit, HabitCompletion } from "@prisma/client";
 
-export type { Task, Exam, StudySession, Category };
+export type { Task, Exam, StudySession, Category, Habit, HabitCompletion };
+
+export type HabitWithCompletions = Habit & { completions: HabitCompletion[] };
 
 export type Recurrence = "none" | "daily" | "weekly" | "monthly";
 
@@ -22,6 +24,7 @@ export type UiTask = {
   recurrence?: Recurrence;
   recurrenceEnd?: Date;
   subtasks?: Subtask[];
+  estimatedMinutes?: number | null;
 };
 
 export type TaskWithCategory = Task & {

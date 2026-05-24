@@ -15,6 +15,14 @@ export const TaskCreateSchema = z.object({
   recurrence: z.enum(["none", "daily", "weekly", "monthly"]).default("none"),
   recurrenceEnd: z.string().optional().nullable(),
   subtasks: z.array(SubtaskSchema).optional().nullable(),
+  estimatedMinutes: z.number().int().positive().optional().nullable(),
+});
+
+export const HabitCreateSchema = z.object({
+  title: z.string().min(1, "Tytuł jest wymagany"),
+  description: z.string().optional(),
+  emoji: z.string().default("✅"),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#3b82f6"),
 });
 
 export const TaskUpdateSchema = TaskCreateSchema.partial().extend({
