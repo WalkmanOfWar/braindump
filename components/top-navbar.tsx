@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { PushSubscribeButton } from '@/components/push-subscribe'
-import { LayoutDashboard, CheckSquare, GraduationCap, Calendar, LogOut, Sun, Moon, BarChart2, Search, Brain, TrendingUp } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, GraduationCap, Calendar, LogOut, Sun, Moon, BarChart2, Search, Brain, TrendingUp, Repeat2 } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -17,6 +17,7 @@ const navItems = [
   { href: '/tasks', label: 'Zadania', icon: CheckSquare },
   { href: '/exams', label: 'Egzaminy', icon: GraduationCap },
   { href: '/calendar', label: 'Kalendarz', icon: Calendar },
+  { href: '/habits', label: 'Nawyki', icon: Repeat2 },
   { href: '/braindump', label: 'Notatnik', icon: Brain },
   { href: '/review', label: 'Przegląd', icon: TrendingUp },
   { href: '/stats', label: 'Statystyki', icon: BarChart2 },

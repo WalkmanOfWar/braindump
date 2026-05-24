@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { Plus, Check, Sparkles, Loader2, Trash2, RepeatIcon } from 'lucide-react'
+import { Plus, Check, Sparkles, Loader2, Trash2, RepeatIcon, Timer } from 'lucide-react'
 import type { UiTask, Category, Recurrence, Subtask } from '@/types'
 import { nanoid } from 'nanoid'
 
@@ -56,6 +56,7 @@ export function TaskModal({
   const [syncWithGoogle, setSyncWithGoogle] = useState(false)
   const [recurrence, setRecurrence] = useState<Recurrence>('none')
   const [recurrenceEnd, setRecurrenceEnd] = useState('')
+  const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null)
 
   // Subtasks
   const [subtasks, setSubtasks] = useState<Subtask[]>([])
@@ -85,6 +86,7 @@ export function TaskModal({
       setRecurrence(task.recurrence ?? 'none')
       setRecurrenceEnd(task.recurrenceEnd ? task.recurrenceEnd.toISOString().slice(0, 10) : '')
       setSubtasks(task.subtasks ?? [])
+      setEstimatedMinutes((task as UiTask & { estimatedMinutes?: number | null }).estimatedMinutes ?? null)
     } else {
       setTitle('')
       setDescription('')
@@ -95,6 +97,7 @@ export function TaskModal({
       setRecurrence('none')
       setRecurrenceEnd('')
       setSubtasks([])
+      setEstimatedMinutes(null)
     }
     setNewSubtaskText('')
     setAdHocText('')
@@ -199,6 +202,7 @@ export function TaskModal({
       recurrence,
       recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : undefined,
       subtasks: subtasks.length > 0 ? subtasks : undefined,
+      estimatedMinutes: estimatedMinutes ?? undefined,
     })
     onOpenChange(false)
   }
@@ -434,6 +438,37 @@ export function TaskModal({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Estimated time */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <Timer className="w-3.5 h-3.5" />
+              Szacowany czas
+            </Label>
+            <div className="flex gap-1.5 flex-wrap">
+              {[
+                { label: '15 min', value: 15 },
+                { label: '30 min', value: 30 },
+                { label: '1 godz', value: 60 },
+                { label: '2 godz', value: 120 },
+                { label: '3+ godz', value: 180 },
+              ].map(({ label, value }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setEstimatedMinutes(estimatedMinutes === value ? null : value)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs border transition-colors',
+                    estimatedMinutes === value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Recurrence */}

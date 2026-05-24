@@ -3,14 +3,14 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Sun, CheckSquare, GraduationCap, Brain, TrendingUp } from 'lucide-react'
+import { Sun, CheckSquare, GraduationCap, Repeat2, Brain } from 'lucide-react'
 
 const navItems = [
   { href: '/today', label: 'Dziś', icon: Sun },
   { href: '/tasks', label: 'Zadania', icon: CheckSquare },
   { href: '/exams', label: 'Egzaminy', icon: GraduationCap },
+  { href: '/habits', label: 'Nawyki', icon: Repeat2 },
   { href: '/braindump', label: 'Notatnik', icon: Brain },
-  { href: '/review', label: 'Przegląd', icon: TrendingUp },
 ]
 
 export function BottomNav() {
