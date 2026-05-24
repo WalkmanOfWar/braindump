@@ -5,6 +5,8 @@ import { Plus, Target, Trash2, Pencil, CheckCircle2, Circle, ChevronDown, Chevro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { TopNavbar } from "@/components/top-navbar";
+import { BottomNav } from "@/components/bottom-nav";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { GoalWithTasks } from "@/types";
@@ -332,8 +334,9 @@ export default function GoalsPage() {
   const activeGoals = goals.filter(g => !g.archivedAt).length;
 
   return (
-    <main className="min-h-screen bg-background pb-24 md:pb-8">
-      <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="min-h-screen bg-background pb-24 md:pb-8">
+      <TopNavbar />
+      <main className="max-w-3xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -396,14 +399,16 @@ export default function GoalsPage() {
             ))}
           </div>
         )}
-      </div>
 
-      <GoalModal
-        open={modalOpen}
-        initial={editingGoal ?? undefined}
-        onClose={() => { setModalOpen(false); setEditingGoal(null); }}
-        onSave={handleSave}
-      />
-    </main>
+        <GoalModal
+          open={modalOpen}
+          initial={editingGoal ?? undefined}
+          onClose={() => { setModalOpen(false); setEditingGoal(null); }}
+          onSave={handleSave}
+        />
+      </main>
+
+      <BottomNav />
+    </div>
   );
 }
