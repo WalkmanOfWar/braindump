@@ -142,11 +142,13 @@ function DraggableTaskCard({
       style={{
         transform: CSS.Transform.toString(transform) ?? undefined,
         borderLeftColor: color,
-        opacity: isDragging ? 0 : 1,
       }}
       className={cn(
         "flex items-center gap-2 px-3 py-2.5 bg-card rounded-lg border border-l-[3px] shadow-sm",
-        "touch-none select-none cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md"
+        "touch-none select-none cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md",
+        // While dragging: keep the source visible as a faint dashed ghost
+        // (full invisibility makes the source row look empty + isOver-highlighted)
+        isDragging && "opacity-40 border-dashed shadow-none"
       )}
     >
       <GripVertical className="w-3.5 h-3.5 shrink-0 text-muted-foreground/40" />
@@ -322,9 +324,11 @@ function DraggableTaskChip({
         transform: CSS.Transform.toString(transform) ?? undefined,
         backgroundColor: `${color}20`,
         color,
-        opacity: isDragging ? 0 : 1,
       }}
-      className="w-full px-1 py-0.5 rounded-md text-[11px] leading-tight touch-none select-none cursor-grab active:cursor-grabbing flex items-center gap-1"
+      className={cn(
+        "w-full px-1 py-0.5 rounded-md text-[11px] leading-tight touch-none select-none cursor-grab active:cursor-grabbing flex items-center gap-1",
+        isDragging && "opacity-40 border border-dashed"
+      )}
     >
       <GripVertical
         className="w-2.5 h-2.5 shrink-0 opacity-50"
@@ -459,10 +463,11 @@ function TimeSlot({
       <div
         ref={setNodeRef}
         className={cn(
-          "flex-1 pt-0.5 pb-1 space-y-1 transition-colors duration-150 rounded-r-lg px-1",
+          "flex-1 pt-0.5 pb-1 space-y-1 transition-colors duration-150 rounded-md px-1",
           // Solid line on the hour, dashed line on the half-hour to give a subtle grid
           isHalf ? "border-t border-dashed border-border/30" : "border-t border-border/60",
-          isOver && "bg-primary/10 border-primary/40",
+          // Hover highlight: subtle ring instead of fat bg fill — avoids wide purple bar
+          isOver && "ring-2 ring-inset ring-primary/50 bg-primary/5",
           isCurrent && "border-primary/40"
         )}
       >
@@ -588,11 +593,11 @@ function DragOverlayCard({ task }: { task: TaskWithCategory | null }) {
   const color = task.category?.color ?? "#6b7280";
   return (
     <div
-      className="flex items-center gap-1.5 px-2.5 py-2 bg-card rounded-lg border border-primary/40 shadow-2xl text-xs font-medium max-w-[160px] rotate-1"
-      style={{ borderLeftWidth: 3, borderLeftColor: color, color }}
+      className="flex items-center gap-2 px-3 py-2 bg-card rounded-lg border border-primary/40 shadow-2xl text-sm font-medium min-w-[180px] max-w-[360px] cursor-grabbing"
+      style={{ borderLeftWidth: 3, borderLeftColor: color }}
     >
-      <GripVertical className="w-3 h-3 shrink-0 opacity-40" />
-      <span className="truncate">{task.title}</span>
+      <GripVertical className="w-3.5 h-3.5 shrink-0 text-muted-foreground/40" />
+      <span className="truncate text-foreground">{task.title}</span>
     </div>
   );
 }
