@@ -8,7 +8,7 @@ import { TaskCard } from "@/components/task-card";
 import { TaskModal } from "@/components/task-modal";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, CheckCircle2, ListTodo, BookOpen, Sparkles, Loader2, RefreshCw, Play, Target, Timer, Lightbulb } from "lucide-react";
+import { AlertCircle, CheckCircle2, ListTodo, BookOpen, Loader2, RefreshCw, Play, Target, Timer, Lightbulb } from "lucide-react";
 import { useFocusMode } from "@/components/focus-mode";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { Button } from "@/components/ui/button";
@@ -27,8 +27,6 @@ export default function DashboardPage() {
   const [editingTask, setEditingTask] = useState<UiTask | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [dueFlashcards, setDueFlashcards] = useState(0);
-  const [brief, setBrief] = useState<string | null>(null);
-  const [briefLoading, setBriefLoading] = useState(false);
   const [focusRec, setFocusRec] = useState<{ taskId: string; title: string; estimatedMinutes: number | null; reason: string } | null>(null);
   const [focusRecLoading, setFocusRecLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -65,25 +63,6 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const handleFetchBrief = async () => {
-    setBriefLoading(true);
-    try {
-      const res = await fetch("/api/ai/daily-brief", { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        setBrief(data.brief);
-      } else if (res.status === 503) {
-        toast.error("Brak klucza ANTHROPIC_API_KEY — dodaj go do zmiennych środowiskowych");
-      } else {
-        toast.error(data.error ?? "Nie udało się wygenerować planu");
-      }
-    } catch {
-      toast.error("Błąd połączenia z AI");
-    } finally {
-      setBriefLoading(false);
-    }
-  };
 
   const handleFetchFocusRec = async () => {
     setFocusRecLoading(true);
@@ -287,38 +266,6 @@ export default function DashboardPage() {
       <TopNavbar />
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-8">
-
-        {/* AI Daily Brief */}
-        <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-medium text-primary">
-              <Sparkles className="w-4 h-4" />
-              Plan na dziś
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-muted-foreground"
-              onClick={handleFetchBrief}
-              disabled={briefLoading}
-            >
-              {briefLoading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : brief ? (
-                <RefreshCw className="w-3.5 h-3.5" />
-              ) : (
-                "Generuj"
-              )}
-            </Button>
-          </div>
-          {brief ? (
-            <p className="text-sm text-foreground leading-relaxed">{brief}</p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {briefLoading ? "AI analizuje Twoje zadania…" : "Kliknij „Generuj” aby otrzymać spersonalizowany plan na dziś."}
-            </p>
-          )}
-        </div>
 
         {/* Co teraz? */}
         <div className="rounded-xl border border-border bg-card/60 p-4 space-y-3">
