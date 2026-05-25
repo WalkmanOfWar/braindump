@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { PushSubscribeButton } from '@/components/push-subscribe'
-import { LayoutDashboard, CheckSquare, GraduationCap, Calendar, LogOut, Sun, Moon, BarChart2, Search, Brain, TrendingUp, Repeat2, Target } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, GraduationCap, Calendar, LogOut, Sun, Moon, BarChart2, Search, Brain, TrendingUp, Repeat2, Target, Settings as SettingsIcon } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -111,15 +111,25 @@ export function TopNavbar() {
             </Button>
           )}
 
-          <Avatar className="h-8 w-8 ml-1">
-            <AvatarImage
-              src={session?.user?.image ?? undefined}
-              alt={session?.user?.name ?? 'Avatar'}
-            />
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-              {session?.user?.name?.[0]?.toUpperCase() ?? '?'}
-            </AvatarFallback>
-          </Avatar>
+          <Link
+            href="/settings"
+            className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-secondary/50 hidden sm:inline-flex"
+            title="Ustawienia"
+          >
+            <SettingsIcon className="h-4 w-4" />
+          </Link>
+
+          <Link href="/settings" className="ml-1" title="Ustawienia">
+            <Avatar className="h-8 w-8">
+              <AvatarImage
+                src={session?.user?.image ?? undefined}
+                alt={session?.user?.name ?? 'Avatar'}
+              />
+              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                {session?.user?.name?.[0]?.toUpperCase() ?? '?'}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
 
           <Button
             variant="ghost"

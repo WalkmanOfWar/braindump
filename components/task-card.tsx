@@ -74,6 +74,8 @@ export function TaskCard({
   const urgencyColor = getUrgencyColor(urgencyLevel)
   const isOverdue = !isCompleted && task.deadline < new Date()
 
+  const [justCompleted, setJustCompleted] = useState(false)
+
   const handleToggle = () => {
     if (selectionMode) {
       onSelect?.(task.id)
@@ -82,6 +84,10 @@ export function TaskCard({
     const newValue = !isCompleted
     setIsCompleted(newValue)
     onToggleComplete?.(task.id, newValue)
+    if (newValue) {
+      setJustCompleted(true)
+      setTimeout(() => setJustCompleted(false), 600)
+    }
   }
 
   const isHighlighted = variant === 'highlighted'
@@ -90,7 +96,8 @@ export function TaskCard({
     <>
     <div
       className={cn(
-        'flex items-start gap-3 p-4 rounded-lg border transition-all',
+        'flex items-start gap-3 p-4 rounded-lg border transition-all duration-300',
+        justCompleted && 'ring-2 ring-urgency-low/60 scale-[0.98]',
         isHighlighted
           ? 'bg-primary text-primary-foreground border-primary shadow-lg'
           : selected
