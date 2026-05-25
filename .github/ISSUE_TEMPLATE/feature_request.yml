@@ -1,0 +1,39 @@
+name: Nowa funkcjonalność
+description: Zaproponuj nową funkcję lub ulepszenie
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Jaki problem rozwiązuje ta funkcja?
+      placeholder: Frustruje mnie gdy...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proponowane rozwiązanie
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatywy, które rozważałeś
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Obszar aplikacji
+      options:
+        - Zadania
+        - Egzaminy
+        - Nawyki
+        - Cele
+        - Kalendarz
+        - Statystyki
+        - Powiadomienia
+        - AI
+        - PWA / mobilna
+        - Inne

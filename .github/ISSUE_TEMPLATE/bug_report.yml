@@ -1,0 +1,50 @@
+name: Błąd
+description: Zgłoś błąd w aplikacji
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Dziękujemy za zgłoszenie! Uzupełnij poniższe pola.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Opis błędu
+      description: Co się dzieje, a co powinno się dziać?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Kroki do odtworzenia
+      placeholder: |
+        1. Przejdź do ...
+        2. Kliknij ...
+        3. Błąd widoczny w ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Oczekiwane zachowanie
+    validations:
+      required: true
+
+  - type: dropdown
+    id: device
+    attributes:
+      label: Platforma
+      options:
+        - Desktop (przeglądarka)
+        - Mobile (PWA)
+        - Mobile (przeglądarka)
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Dodatkowy kontekst
+      description: Screenshoty, logi z konsoli, itp.
