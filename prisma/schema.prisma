@@ -114,6 +114,7 @@ model Habit {
   description String?
   emoji       String    @default("✅")
   color       String    @default("#3b82f6")
+  frequency   String    @default("daily") // daily | weekly:N (N times per week) | custom:N (every N days)
   archivedAt  DateTime?
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)

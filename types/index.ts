@@ -29,6 +29,7 @@ export type UiTask = {
   deadline: Date;
   priority: number;
   categoryId: string;
+  goalId?: string | null;
   completed: boolean;
   syncWithGoogle: boolean;
   recurrence?: Recurrence;

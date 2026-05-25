@@ -160,11 +160,7 @@ function GoalCard({ goal, onEdit, onDelete }: GoalCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const totalTasks = goal.tasks.length;
-  // tasks fetched are only undone ones — compute done count from all tasks if needed
-  // Since API returns undone tasks only, we use a stored total approach:
-  // For now treat returned tasks as remaining tasks
-  const remainingTasks = goal.tasks.filter(t => !t.done).length;
-  const doneTasks = totalTasks - remainingTasks;
+  const doneTasks = goal.tasks.filter(t => t.done).length;
   const progress = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
   const deadlineDate = goal.deadline

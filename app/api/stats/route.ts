@@ -40,12 +40,24 @@ export async function GET() {
     d.setDate(since30.getDate() + i);
     completedPerDay[d.toISOString().slice(0, 10)] = 0;
   }
+  // Day-of-week breakdown (0=Mon..6=Sun) and hour-of-day (0..23)
+  const dayOfWeek = [0, 0, 0, 0, 0, 0, 0];
+  const hourOfDay = Array(24).fill(0) as number[];
+
   recentDone.forEach((t) => {
-    if (t.doneAt) {
-      const key = new Date(t.doneAt).toISOString().slice(0, 10);
-      if (key in completedPerDay) completedPerDay[key]++;
-    }
+    if (!t.doneAt) return;
+    const dt = new Date(t.doneAt);
+    const key = dt.toISOString().slice(0, 10);
+    if (key in completedPerDay) completedPerDay[key]++;
+    // JS getDay: 0=Sun..6=Sat → convert to 0=Mon..6=Sun
+    const dow = (dt.getDay() + 6) % 7;
+    dayOfWeek[dow]++;
+    hourOfDay[dt.getHours()]++;
   });
+
+  const DOW_LABELS = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
+  const dayOfWeekDist = dayOfWeek.map((count, i) => ({ day: DOW_LABELS[i], count }));
+  const hourOfDayDist = hourOfDay.map((count, hour) => ({ hour, count }));
 
   // Priority distribution
   const priorityDist = [1, 2, 3, 4, 5].map((p) => ({
@@ -94,6 +106,11 @@ export async function GET() {
     0
   );
 
+  // Best day & best hour (for highlights)
+  const bestDayIdx = dayOfWeek.indexOf(Math.max(...dayOfWeek));
+  const bestHourIdx = hourOfDay.indexOf(Math.max(...hourOfDay));
+  const totalDone30 = recentDone.length;
+
   return NextResponse.json({
     totalTasks,
     doneTasks,
@@ -104,5 +121,10 @@ export async function GET() {
     completedPerDay: Object.entries(completedPerDay).map(([date, count]) => ({ date, count })),
     priorityDist,
     categoryBreakdown,
+    dayOfWeekDist,
+    hourOfDayDist,
+    bestDay: totalDone30 > 0 ? DOW_LABELS[bestDayIdx] : null,
+    bestHour: totalDone30 > 0 ? bestHourIdx : null,
+    avgPerDay: Math.round((totalDone30 / 30) * 10) / 10,
   });
 }
