@@ -324,12 +324,16 @@ function DraggableTaskChip({
         color,
         opacity: isDragging ? 0 : 1,
       }}
-      className="w-full px-1 py-0.5 rounded-md text-[11px] leading-tight touch-none select-none cursor-grab active:cursor-grabbing"
+      className="w-full px-1 py-0.5 rounded-md text-[11px] leading-tight touch-none select-none cursor-grab active:cursor-grabbing flex items-center gap-1"
     >
+      <GripVertical
+        className="w-2.5 h-2.5 shrink-0 opacity-50"
+        style={{ color }}
+      />
       <div
         role="button"
         tabIndex={0}
-        className={cn("w-full text-left truncate cursor-pointer", task.done && "line-through opacity-60")}
+        className={cn("flex-1 min-w-0 text-left truncate cursor-pointer", task.done && "line-through opacity-60")}
         onClick={(e) => { e.stopPropagation(); if (!isDragging) onOpen(); }}
         onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}
       >
