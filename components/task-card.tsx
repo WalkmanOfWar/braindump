@@ -255,13 +255,22 @@ export function TaskCard({
         {task.subtasks && task.subtasks.length > 0 && (
           <div className="mt-2 space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
+              <span className={cn(
+                'text-xs',
+                isHighlighted ? 'text-primary-foreground/80' : 'text-muted-foreground'
+              )}>
                 {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length} podzadań
               </span>
             </div>
-            <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
+            <div className={cn(
+              'w-full rounded-full h-1 overflow-hidden',
+              isHighlighted ? 'bg-primary-foreground/20' : 'bg-muted'
+            )}>
               <div
-                className="h-full rounded-full bg-primary transition-all"
+                className={cn(
+                  'h-full rounded-full transition-all',
+                  isHighlighted ? 'bg-primary-foreground' : 'bg-primary'
+                )}
                 style={{
                   width: `${(task.subtasks.filter((s) => s.done).length / task.subtasks.length) * 100}%`
                 }}

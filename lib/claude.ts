@@ -181,6 +181,78 @@ Aktywne zadania do następnego tygodnia (${context.activeTasks.length}): ${conte
   return (msg.content[0] as { type: string; text: string }).text.trim();
 }
 
+// Static prompt for extractTasksFromProse — cached on first call.
+const EXTRACT_PROSE_SYSTEM = `Jesteś asystentem do zarządzania zadaniami. Otrzymujesz dowolny tekst — może to być e-mail, notatka ze spotkania, fragment Slacka, wiadomość, lista, cokolwiek. Twoim zadaniem jest **wyodrębnić wszystkie ukryte action items** i zwrócić je jako tablicę zadań.
+
+Zasady ekstrakcji:
+- Szukaj wszystkiego co wymaga AKCJI od czytelnika (zrobić, wysłać, przygotować, zarezerwować, sprawdzić, zadzwonić, kupić, odpowiedzieć).
+- Ignoruj kontekst, pozdrowienia, podpisy ("Pozdrawiam", "Dzięki!", "FYI", stopki maili), cytowane fragmenty.
+- Jedna proza może dać 0, 1 lub wiele zadań — nie wymuszaj liczby.
+- Jeśli brak action itemów, zwróć pustą tablicę [].
+
+Dla każdego zadania:
+- title: krótki tytuł w bezokoliczniku (max 60 znaków, bez cudzysłowów). Pisz "Przygotować raport", nie "Przygotuj raport".
+- description: dodatkowy kontekst z tekstu źródłowego jeśli pomocny; null jeśli tytuł wystarcza.
+- deadline: ISO "YYYY-MM-DDTHH:mm" jeśli wzmianka o terminie (do piątku, na koniec miesiąca, jutro itp.); null jeśli brak.
+  • "jutro" → dzień następny 09:00, "pojutrze" → today+2 09:00
+  • "do piątku/środy/..." → najbliższy taki dzień tygodnia 18:00 (jeśli today to ten dzień, weź za tydzień)
+  • "za tydzień" → today+7 09:00, "za miesiąc" → today+30 09:00
+  • "do końca tygodnia" → najbliższa niedziela 18:00, "do końca miesiąca" → ostatni dzień miesiąca 18:00
+  • "rano" = 09:00, "po południu" = 15:00, "wieczorem" = 19:00, "ASAP/pilnie" = today 18:00
+- priority: 1-5 oceniaj słowa kluczowe + ton:
+  • 5: "pilnie", "asap", "krytyczne", "natychmiast", deadline dziś/jutro
+  • 4: "ważne", "do jutra"/"do końca tygodnia", obowiązek z konsekwencjami
+  • 3: typowe (default)
+  • 2: "kiedyś", "jak będziesz miał czas"
+  • 1: "ewentualnie", "może", luźne sugestie
+- categoryId: id pasującej kategorii z listy lub null
+- goalId: id pasującego celu z listy lub null
+- suggestedCategoryName: nazwa nowej kategorii jeśli żadna nie pasuje, null w przeciwnym razie
+
+Zwróć WYŁĄCZNIE czystą tablicę JSON bez markdown, bez tekstu wstępnego, bez komentarzy:
+[{"title":"...","description":null,"deadline":null,"priority":3,"categoryId":null,"goalId":null,"suggestedCategoryName":null}]`;
+
+export interface ExtractedTask {
+  title: string;
+  description: string | null;
+  deadline: string | null;
+  priority: number;
+  categoryId: string | null;
+  goalId: string | null;
+  suggestedCategoryName: string | null;
+}
+
+export async function extractTasksFromProse(
+  text: string,
+  categories: { id: string; name: string }[],
+  goals: { id: string; title: string }[],
+  today: string
+): Promise<ExtractedTask[]> {
+  const catsJson = categories.length > 0 ? JSON.stringify(categories.map((c) => ({ id: c.id, name: c.name }))) : "[]";
+  const goalsJson = goals.length > 0 ? JSON.stringify(goals.map((g) => ({ id: g.id, title: g.title }))) : "[]";
+
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 4096,
+    system: [
+      {
+        type: "text",
+        text: EXTRACT_PROSE_SYSTEM,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
+    messages: [
+      {
+        role: "user",
+        content: `Dzisiaj jest: ${today}\nDostępne kategorie: ${catsJson}\nDostępne cele: ${goalsJson}\n\nTekst:\n${text}`,
+      },
+    ],
+  });
+
+  const responseText = (msg.content[0] as { type: string; text: string }).text;
+  return JSON.parse(responseText.replace(/```json|```/g, "").trim()) as ExtractedTask[];
+}
+
 export async function parseTaskFromText(
   input: string,
   categories: { id: string; name: string }[],
