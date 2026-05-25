@@ -146,9 +146,10 @@ function DraggableTaskCard({
       className={cn(
         "flex items-center gap-2 px-3 py-2.5 bg-card rounded-lg border border-l-[3px] shadow-sm",
         "touch-none select-none cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md",
-        // While dragging: keep the source visible as a faint dashed ghost
-        // (full invisibility makes the source row look empty + isOver-highlighted)
-        isDragging && "opacity-40 border-dashed shadow-none"
+        // While dragging: hide source entirely. The DragOverlay floats with
+        // the cursor so the user already sees what they're dragging — keeping
+        // a wide ghost in place just creates visual noise next to isOver rings.
+        isDragging && "hidden"
       )}
     >
       <GripVertical className="w-3.5 h-3.5 shrink-0 text-muted-foreground/40" />
@@ -327,7 +328,7 @@ function DraggableTaskChip({
       }}
       className={cn(
         "w-full px-1 py-0.5 rounded-md text-[11px] leading-tight touch-none select-none cursor-grab active:cursor-grabbing flex items-center gap-1",
-        isDragging && "opacity-40 border border-dashed"
+        isDragging && "hidden"
       )}
     >
       <GripVertical
