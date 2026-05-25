@@ -26,9 +26,10 @@ import {
   Flame,
   CalendarDays,
   Tag,
+  Target,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { TaskWithCategory, ExamWithSessions, Category } from "@/types";
+import type { TaskWithCategory, ExamWithSessions, Category, Goal } from "@/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -54,6 +55,7 @@ const NAV_LINKS = [
 //   @tydzien      → +7 days
 //   @miesiac      → +30 days
 //   #CategoryName → matched against loaded categories (prefix match)
+//   ^GoalName    → matched against loaded goals (prefix match)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface ParsedTask {
@@ -63,6 +65,8 @@ interface ParsedTask {
   deadlineLabel: string | null;
   categoryId: string | null;
   categoryName: string | null;
+  goalId: string | null;
+  goalLabel: string | null;
 }
 
 const DEADLINE_SHORTCUTS: { key: string; days: number; label: string }[] = [
@@ -80,13 +84,15 @@ function makeDeadline(daysFromNow: number): Date {
   return d;
 }
 
-function parseQuickAdd(query: string, categories: Category[]): ParsedTask {
+function parseQuickAdd(query: string, categories: Category[], goals: Goal[]): ParsedTask {
   let title = query;
   let priority = 3;
   let deadline: Date | null = null;
   let deadlineLabel: string | null = null;
   let categoryId: string | null = null;
   let categoryName: string | null = null;
+  let goalId: string | null = null;
+  let goalLabel: string | null = null;
 
   // Priority: !1–!5
   const prioMatch = title.match(/![1-5]/);
@@ -117,10 +123,22 @@ function parseQuickAdd(query: string, categories: Category[]): ParsedTask {
     title = title.replace(catMatch[0], "").trim();
   }
 
+  // Goal: ^name (first prefix match)
+  const goalMatch = title.match(/\^(\S+)/);
+  if (goalMatch) {
+    const needle = goalMatch[1].toLowerCase();
+    const matched = goals.find((g) => g.title.toLowerCase().startsWith(needle));
+    if (matched) {
+      goalId = matched.id;
+      goalLabel = `${matched.emoji} ${matched.title}`;
+    }
+    title = title.replace(goalMatch[0], "").trim();
+  }
+
   // Collapse multiple spaces
   title = title.replace(/\s{2,}/g, " ").trim();
 
-  return { title, priority, deadline, deadlineLabel, categoryId, categoryName };
+  return { title, priority, deadline, deadlineLabel, categoryId, categoryName, goalId, goalLabel };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,6 +151,7 @@ export function CommandPalette() {
   const [tasks, setTasks] = useState<TaskWithCategory[]>([]);
   const [exams, setExams] = useState<ExamWithSessions[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [creating, setCreating] = useState(false);
   // loadedRef prevents double-fetch on rapid open/close; not state so it doesn't trigger renders
   const loadedRef = useRef(false);
@@ -154,14 +173,16 @@ export function CommandPalette() {
     if (loadedRef.current) return;
     loadedRef.current = true;
     try {
-      const [tasksRes, examsRes, catsRes] = await Promise.all([
+      const [tasksRes, examsRes, catsRes, goalsRes] = await Promise.all([
         fetch("/api/tasks"),
         fetch("/api/exams"),
         fetch("/api/categories"),
+        fetch("/api/goals"),
       ]);
       if (tasksRes.ok) setTasks(await tasksRes.json());
       if (examsRes.ok) setExams(await examsRes.json());
       if (catsRes.ok)  setCategories(await catsRes.json());
+      if (goalsRes.ok) setGoals(await goalsRes.json());
     } catch {
       loadedRef.current = false; // allow retry on network error
     }
@@ -184,7 +205,7 @@ export function CommandPalette() {
 
   // ── Quick-add ────────────────────────────────────────────────────────────
 
-  const parsed = useMemo(() => parseQuickAdd(query, categories), [query, categories]);
+  const parsed = useMemo(() => parseQuickAdd(query, categories, goals), [query, categories, goals]);
 
   const handleCreate = useCallback(async () => {
     if (!parsed.title || creating) return;
@@ -198,6 +219,7 @@ export function CommandPalette() {
           priority: parsed.priority,
           deadline: parsed.deadline?.toISOString(),
           categoryId: parsed.categoryId ?? undefined,
+          goalId: parsed.goalId ?? undefined,
         }),
       });
       if (res.ok) {
@@ -224,7 +246,7 @@ export function CommandPalette() {
       description="Szukaj zadań, stron lub utwórz nowe zadanie"
     >
       <CommandInput
-        placeholder="Szukaj lub wpisz zadanie (np. Zakupy !4 @jutro #Dom)…"
+        placeholder="Szukaj lub wpisz zadanie (np. Zakupy !4 @jutro #Dom ^Zdrowie)…"
         value={query}
         onValueChange={setQuery}
       />
@@ -250,7 +272,7 @@ export function CommandPalette() {
                     {parsed.title || <span className="text-muted-foreground italic">wpisz tytuł…</span>}
                   </p>
                   {/* Meta chips */}
-                  {(parsed.priority !== 3 || parsed.deadlineLabel || parsed.categoryName) && (
+                  {(parsed.priority !== 3 || parsed.deadlineLabel || parsed.categoryName || parsed.goalLabel) && (
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       {parsed.priority !== 3 && (
                         <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-destructive/10 text-destructive rounded px-1">
@@ -268,6 +290,12 @@ export function CommandPalette() {
                         <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-muted text-muted-foreground rounded px-1">
                           <Tag className="w-2.5 h-2.5" />
                           {parsed.categoryName}
+                        </span>
+                      )}
+                      {parsed.goalLabel && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded px-1">
+                          <Target className="w-2.5 h-2.5" />
+                          {parsed.goalLabel}
                         </span>
                       )}
                     </div>
@@ -293,6 +321,7 @@ export function CommandPalette() {
               <span className="font-mono bg-muted px-1 rounded">@jutro</span>
               <span className="text-muted-foreground">termin</span>
               <span className="font-mono bg-muted px-1 rounded">#Kategoria</span>
+              <span className="font-mono bg-muted px-1 rounded">^Cel</span>
             </CommandItem>
           </CommandGroup>
         )}

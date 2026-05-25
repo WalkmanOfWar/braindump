@@ -12,12 +12,14 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const categoryId = searchParams.get("categoryId");
+  const goalId = searchParams.get("goalId");
   const done = searchParams.get("done");
 
   const tasks = await prisma.task.findMany({
     where: {
       userId: session.user.id,
       ...(categoryId ? { categoryId } : {}),
+      ...(goalId ? { goalId } : {}),
       ...(done !== null ? { done: done === "true" } : {}),
     },
     include: { category: true },
@@ -41,7 +43,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { title, description, deadline, priority, categoryId, recurrence, recurrenceEnd, subtasks } = parsed.data;
+  const { title, description, deadline, priority, categoryId, goalId, estimatedMinutes, recurrence, recurrenceEnd, subtasks } = parsed.data;
 
   const task = await prisma.task.create({
     data: {
@@ -50,6 +52,8 @@ export async function POST(req: NextRequest) {
       deadline: deadline ? new Date(deadline) : null,
       priority,
       categoryId: categoryId ?? null,
+      goalId: goalId ?? null,
+      estimatedMinutes: estimatedMinutes ?? null,
       userId: session.user.id,
       recurrence: recurrence ?? "none",
       recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
