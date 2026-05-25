@@ -16,8 +16,14 @@ import {
   Trash2,
   CheckCheck,
   X,
+  ListTree,
+  Wand2,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import type { Category } from "@/types";
+
+type Mode = "lines" | "smart";
 
 interface ParsedSuggestion {
   title: string;
@@ -25,6 +31,7 @@ interface ParsedSuggestion {
   deadline: string | null;
   priority: number;
   categoryId: string | null;
+  goalId: string | null;
   suggestedCategoryName: string | null;
 }
 
@@ -51,7 +58,7 @@ const PRIORITY_COLOR: Record<number, string> = {
   5: "bg-destructive/15 text-destructive",
 };
 
-const PLACEHOLDER = `Wyrzuć tu wszystko co masz w głowie. Każda linia to osobne zadanie.
+const PLACEHOLDER_LINES = `Wyrzuć tu wszystko co masz w głowie. Każda linia to osobne zadanie.
 
 Przykłady:
 zadzwonić do dentysty przed przyszłym tygodniem
@@ -60,8 +67,18 @@ oddać referat z historii — ważne, do środy
 kupić karmę dla kota
 złożyć wniosek o stypendium — pilne, deadline jutro`;
 
+const PLACEHOLDER_SMART = `Wklej tu cokolwiek — maila od szefa, notatki ze spotkania, fragment Slacka, wiadomość od znajomego. AI samodzielnie znajdzie wszystkie zadania ukryte w tekście.
+
+Przykład — wklejony mail:
+Cześć,
+musisz ogarnąć kilka rzeczy przed konferencją. Zarezerwuj proszę hotel
+do piątku, przygotuj prezentację na czwartek i nie zapomnij wysłać
+materiałów do działu marketingu (najpóźniej środa). Dzięki!
+Anna`;
+
 export default function BrainDumpPage() {
   const [text, setText] = useState("");
+  const [mode, setMode] = useState<Mode>("smart");
   const [suggestions, setSuggestions] = useState<SuggestionCard[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -76,12 +93,7 @@ export default function BrainDumpPage() {
   }, []);
 
   const handleAnalyze = useCallback(async () => {
-    const lines = text
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
-
-    if (lines.length === 0) {
+    if (!text.trim()) {
       toast.info("Napisz coś przed analizą");
       return;
     }
@@ -90,34 +102,72 @@ export default function BrainDumpPage() {
     setSuggestions([]);
 
     try {
-      const res = await fetch("/api/ai/batch-parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lines, categories }),
-      });
+      if (mode === "smart") {
+        // Smart extraction — AI finds action items in arbitrary prose
+        const res = await fetch("/api/ai/extract-tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
 
-      if (res.status === 503) {
-        toast.error("Brak klucza ANTHROPIC_API_KEY — dodaj go do zmiennych środowiskowych");
-        return;
-      }
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error ?? "Błąd AI — spróbuj ponownie");
-        return;
-      }
+        if (res.status === 503) {
+          toast.error("Brak klucza ANTHROPIC_API_KEY — dodaj go do zmiennych środowiskowych");
+          return;
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          toast.error(err.error ?? "Błąd AI — spróbuj ponownie");
+          return;
+        }
 
-      const parsed: (ParsedSuggestion | null)[] = await res.json();
-      const cards: SuggestionCard[] = lines.map((raw, i) => ({
-        id: i,
-        raw,
-        parsed: parsed[i] ?? null,
-        status: "pending",
-      }));
-      setSuggestions(cards);
+        const { tasks }: { tasks: ParsedSuggestion[] } = await res.json();
+        if (tasks.length === 0) {
+          toast.info("AI nie znalazł żadnych zadań w tym tekście");
+        }
+        const cards: SuggestionCard[] = tasks.map((parsed, i) => ({
+          id: i,
+          raw: `(zadanie ${i + 1} z tekstu)`,
+          parsed,
+          status: "pending",
+        }));
+        setSuggestions(cards);
+      } else {
+        // Line-by-line mode (legacy)
+        const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+        if (lines.length === 0) {
+          toast.info("Napisz coś przed analizą");
+          return;
+        }
+
+        const res = await fetch("/api/ai/batch-parse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lines, categories }),
+        });
+
+        if (res.status === 503) {
+          toast.error("Brak klucza ANTHROPIC_API_KEY — dodaj go do zmiennych środowiskowych");
+          return;
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          toast.error(err.error ?? "Błąd AI — spróbuj ponownie");
+          return;
+        }
+
+        const parsed: (ParsedSuggestion | null)[] = await res.json();
+        const cards: SuggestionCard[] = lines.map((raw, i) => ({
+          id: i,
+          raw,
+          parsed: parsed[i] ?? null,
+          status: "pending",
+        }));
+        setSuggestions(cards);
+      }
     } finally {
       setAnalyzing(false);
     }
-  }, [text, categories]);
+  }, [text, mode, categories]);
 
   const createTask = useCallback(
     async (card: SuggestionCard) => {
@@ -133,6 +183,7 @@ export default function BrainDumpPage() {
           deadline: card.parsed.deadline,
           priority: card.parsed.priority,
           categoryId: card.parsed.categoryId || null,
+          goalId: card.parsed.goalId || null,
         }),
       });
 
@@ -189,12 +240,38 @@ export default function BrainDumpPage() {
           </div>
         </div>
 
+        {/* Mode toggle */}
+        <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="smart" className="gap-1.5">
+              <Wand2 className="w-3.5 h-3.5" />
+              Smart capture
+            </TabsTrigger>
+            <TabsTrigger value="lines" className="gap-1.5">
+              <ListTree className="w-3.5 h-3.5" />
+              Linie jako zadania
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className={cn(
+          "rounded-lg border p-3 text-xs",
+          mode === "smart"
+            ? "bg-primary/5 border-primary/20 text-foreground/80"
+            : "bg-muted border-border text-muted-foreground"
+        )}>
+          {mode === "smart"
+            ? "Wklej cokolwiek — maila, notatki, wiadomość. AI znajdzie wszystkie action items, deadliny i priorytety. Idealne dla maili."
+            : "Każda linia tekstu zostanie potraktowana jako osobne zadanie. Dobre dla szybkich list."
+          }
+        </div>
+
         {/* Scratchpad */}
         <div className="space-y-3">
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={PLACEHOLDER}
+            placeholder={mode === "smart" ? PLACEHOLDER_SMART : PLACEHOLDER_LINES}
             rows={10}
             className="resize-none font-mono text-sm leading-relaxed"
             onKeyDown={(e) => {
@@ -207,7 +284,10 @@ export default function BrainDumpPage() {
 
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">
-              {text.split("\n").filter((l) => l.trim()).length} linii
+              {mode === "smart"
+                ? `${text.length} znaków`
+                : `${text.split("\n").filter((l) => l.trim()).length} linii`
+              }
               {createdCount > 0 && (
                 <span className="ml-2 text-urgency-low font-medium">
                   ✓ {createdCount} zadań dodano
