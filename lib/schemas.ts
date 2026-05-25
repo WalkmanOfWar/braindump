@@ -63,3 +63,19 @@ export const RegisterSchema = z.object({
   password: z.string().min(6, "Hasło musi mieć minimum 6 znaków"),
   name: z.string().optional(),
 });
+
+export const DeckCreateSchema = z.object({
+  title: z.string().min(1, "Nazwa jest wymagana").max(60),
+  emoji: z.string().default("📚"),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#7c5cff"),
+});
+
+export const FlashcardCreateSchema = z.object({
+  front: z.string().min(1, "Pytanie jest wymagane").max(500),
+  back: z.string().min(1, "Odpowiedź jest wymagana").max(1000),
+});
+
+export const ReviewSchema = z.object({
+  cardId: z.string(),
+  rating: z.number().int().min(1).max(4),
+});

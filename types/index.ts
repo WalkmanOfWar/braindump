@@ -1,6 +1,6 @@
-import type { Task, Exam, StudySession, Category, Habit, HabitCompletion, Goal } from "@prisma/client";
+import type { Task, Exam, StudySession, Category, Habit, HabitCompletion, Goal, FlashcardDeck, Flashcard } from "@prisma/client";
 
-export type { Task, Exam, StudySession, Category, Habit, HabitCompletion, Goal };
+export type { Task, Exam, StudySession, Category, Habit, HabitCompletion, Goal, FlashcardDeck, Flashcard };
 
 export type HabitWithCompletions = Habit & { completions: HabitCompletion[] };
 
@@ -78,6 +78,14 @@ export type CategoryCreateInput = {
 export type ApiError = {
   error: string;
 };
+
+export type FlashcardDeckWithStats = FlashcardDeck & {
+  _count: { cards: number };
+  dueCount: number;
+  newCount: number;
+};
+
+export type FlashcardWithDeck = Flashcard & { deck: FlashcardDeck };
 
 declare module "next-auth" {
   interface Session {

@@ -8,7 +8,7 @@ import { TaskCard } from "@/components/task-card";
 import { TaskModal } from "@/components/task-modal";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, CheckCircle2, ListTodo, BookOpen, Sparkles, Loader2, RefreshCw, Play, Target, Timer } from "lucide-react";
+import { AlertCircle, CheckCircle2, ListTodo, BookOpen, Sparkles, Loader2, RefreshCw, Play, Target, Timer, Lightbulb } from "lucide-react";
 import { useFocusMode } from "@/components/focus-mode";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ export default function DashboardPage() {
   const [isError, setIsError] = useState(false);
   const [editingTask, setEditingTask] = useState<UiTask | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [dueFlashcards, setDueFlashcards] = useState(0);
   const [brief, setBrief] = useState<string | null>(null);
   const [briefLoading, setBriefLoading] = useState(false);
   const [focusRec, setFocusRec] = useState<{ taskId: string; title: string; estimatedMinutes: number | null; reason: string } | null>(null);
@@ -35,16 +36,21 @@ export default function DashboardPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [tasksRes, examsRes, catsRes] = await Promise.all([
+      const [tasksRes, examsRes, catsRes, flashcardsRes] = await Promise.all([
         fetch("/api/tasks"),
         fetch("/api/exams"),
         fetch("/api/categories"),
+        fetch("/api/flashcards?dueOnly=true"),
       ]);
       if (!tasksRes.ok || !examsRes.ok || !catsRes.ok) throw new Error();
       const fetchedTasks = await tasksRes.json();
       setTasks(fetchedTasks);
       setExams(await examsRes.json());
       setCategories(await catsRes.json());
+      if (flashcardsRes.ok) {
+        const fc = await flashcardsRes.json() as { dueCount: number };
+        setDueFlashcards(fc.dueCount);
+      }
       // Show onboarding for brand-new users who have no tasks and haven't dismissed it
       if (fetchedTasks.length === 0 && !localStorage.getItem("onboarding-done")) {
         setShowOnboarding(true);
@@ -363,7 +369,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1 hover:shadow-sm transition-shadow">
             <div className="flex items-center gap-2">
               <ListTodo className="h-4 w-4 text-primary" />
@@ -390,6 +396,14 @@ export default function DashboardPage() {
             </p>
             <p className="text-xs text-muted-foreground">sesji dziś</p>
           </div>
+          <a href="/flashcards" className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1 hover:shadow-sm transition-shadow">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="h-4 w-4 text-yellow-500" />
+              <span className="text-xs text-muted-foreground">Fiszki</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{dueFlashcards}</p>
+            <p className="text-xs text-muted-foreground">do powtórki dziś</p>
+          </a>
         </div>
 
         {/* Top 3 tasks */}
