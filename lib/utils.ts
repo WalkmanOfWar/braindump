@@ -62,11 +62,13 @@ export function toUiTask(t: TaskWithCategory): UiTask {
     deadline: t.deadline ? new Date(t.deadline) : new Date(),
     priority: t.priority,
     categoryId: t.categoryId ?? "",
+    goalId: (t as TaskWithCategory & { goalId?: string | null }).goalId ?? null,
     completed: t.done,
     syncWithGoogle: !!t.googleEventId,
     recurrence: (t.recurrence ?? "none") as Recurrence,
     recurrenceEnd: t.recurrenceEnd ? new Date(t.recurrenceEnd) : undefined,
     subtasks: Array.isArray(t.subtasks) ? (t.subtasks as Subtask[]) : undefined,
+    estimatedMinutes: (t as TaskWithCategory & { estimatedMinutes?: number | null }).estimatedMinutes ?? null,
   };
 }
 

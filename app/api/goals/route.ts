@@ -12,8 +12,8 @@ export async function GET() {
     where: { userId: session.user.id, archivedAt: null },
     include: {
       tasks: {
-        where: { done: false },
         select: { id: true, title: true, done: true, priority: true },
+        orderBy: [{ done: "asc" }, { priority: "desc" }],
       },
     },
     orderBy: { createdAt: "asc" },

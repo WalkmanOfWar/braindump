@@ -31,6 +31,32 @@ import type { HabitWithCompletions } from "@/types";
 const PRESET_EMOJIS = ["✅","🏃","📚","💪","🧘","🥗","💧","🎯","✍️","🎨","🎵","😴","🧹","💊","🌿"];
 const PRESET_COLORS = ["#3b82f6","#22c55e","#f97316","#ef4444","#8b5cf6","#ec4899","#14b8a6","#eab308","#6b7280"];
 
+const FREQUENCY_OPTIONS: { value: string; label: string; short: string }[] = [
+  { value: "daily", label: "Codziennie", short: "Codziennie" },
+  { value: "weekly:3", label: "3× w tygodniu", short: "3×/tydz" },
+  { value: "weekly:5", label: "5× w tygodniu", short: "5×/tydz" },
+  { value: "weekly:1", label: "1× w tygodniu", short: "1×/tydz" },
+  { value: "custom:2", label: "Co 2 dni", short: "Co 2 dni" },
+];
+
+function frequencyLabel(freq: string): string {
+  return FREQUENCY_OPTIONS.find(o => o.value === freq)?.short ?? "Codziennie";
+}
+
+/** Returns expected completions in last N days based on frequency. */
+function expectedCompletions(frequency: string, days: number): number {
+  if (frequency === "daily") return days;
+  if (frequency.startsWith("weekly:")) {
+    const n = Number(frequency.slice(7));
+    return Math.round((days / 7) * n);
+  }
+  if (frequency.startsWith("custom:")) {
+    const n = Number(frequency.slice(7));
+    return Math.floor(days / n);
+  }
+  return days;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Heatmap helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -93,9 +119,10 @@ function HabitCard({
         <span className="text-2xl leading-none">{habit.emoji}</span>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-foreground text-sm leading-none truncate">{habit.title}</p>
-          {habit.description && (
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">{habit.description}</p>
-          )}
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+            {frequencyLabel((habit as HabitWithCompletions & { frequency?: string }).frequency ?? "daily")}
+            {habit.description && ` · ${habit.description}`}
+          </p>
         </div>
 
         {/* Streak */}
@@ -180,12 +207,13 @@ function HabitModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   habit?: HabitWithCompletions | null;
-  onSave: (data: { title: string; description: string; emoji: string; color: string }) => void;
+  onSave: (data: { title: string; description: string; emoji: string; color: string; frequency: string }) => void;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [emoji, setEmoji] = useState("✅");
   const [color, setColor] = useState("#3b82f6");
+  const [frequency, setFrequency] = useState("daily");
 
   useEffect(() => {
     if (habit) {
@@ -193,14 +221,15 @@ function HabitModal({
       setDescription(habit.description ?? "");
       setEmoji(habit.emoji);
       setColor(habit.color);
+      setFrequency((habit as HabitWithCompletions & { frequency?: string }).frequency ?? "daily");
     } else {
-      setTitle(""); setDescription(""); setEmoji("✅"); setColor("#3b82f6");
+      setTitle(""); setDescription(""); setEmoji("✅"); setColor("#3b82f6"); setFrequency("daily");
     }
   }, [habit, open]);
 
   const handleSubmit = () => {
     if (!title.trim()) return;
-    onSave({ title: title.trim(), description: description.trim(), emoji, color });
+    onSave({ title: title.trim(), description: description.trim(), emoji, color, frequency });
     onOpenChange(false);
   };
 
@@ -253,6 +282,28 @@ function HabitModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="np. 30 min cardio lub siłownia"
             />
+          </div>
+
+          {/* Frequency */}
+          <div className="space-y-2">
+            <Label>Częstotliwość</Label>
+            <div className="flex gap-1.5 flex-wrap">
+              {FREQUENCY_OPTIONS.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => setFrequency(o.value)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-xs border transition-colors",
+                    frequency === o.value
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+                  )}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Color */}
@@ -338,7 +389,7 @@ export default function HabitsPage() {
     }
   };
 
-  const handleSave = async (data: { title: string; description: string; emoji: string; color: string }) => {
+  const handleSave = async (data: { title: string; description: string; emoji: string; color: string; frequency: string }) => {
     if (editingHabit) {
       const res = await fetch(`/api/habits/${editingHabit.id}`, {
         method: "PATCH",

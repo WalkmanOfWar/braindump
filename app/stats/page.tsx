@@ -7,8 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend,
+  LineChart, Line, CartesianGrid,
 } from "recharts";
-import { CheckCircle2, Flame, BookOpen, AlertTriangle, TrendingUp } from "lucide-react";
+import { CheckCircle2, Flame, BookOpen, AlertTriangle, TrendingUp, Calendar, Clock, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type StatsData = {
@@ -21,6 +23,11 @@ type StatsData = {
   completedPerDay: { date: string; count: number }[];
   priorityDist: { priority: number; count: number }[];
   categoryBreakdown: { name: string; color: string; total: number; done: number }[];
+  dayOfWeekDist: { day: string; count: number }[];
+  hourOfDayDist: { hour: number; count: number }[];
+  bestDay: string | null;
+  bestHour: number | null;
+  avgPerDay: number;
 };
 
 const PRIORITY_LABEL: Record<number, string> = { 1: "P1", 2: "P2", 3: "P3", 4: "P4", 5: "P5" };
@@ -72,7 +79,15 @@ export default function StatsPage() {
       <TopNavbar />
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-8">
-        <h1 className="text-2xl font-bold text-foreground">Statystyki</h1>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h1 className="text-2xl font-bold text-foreground">Statystyki</h1>
+          <Button variant="outline" size="sm" className="gap-1.5" asChild>
+            <a href="/api/export" download>
+              <Download className="w-4 h-4" />
+              Eksportuj moje dane
+            </a>
+          </Button>
+        </div>
 
         {loading || !data ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -115,15 +130,34 @@ export default function StatsPage() {
                 iconClass="bg-primary/15 text-primary"
                 label="Ukończono (30 dni)"
                 value={data.completedPerDay.reduce((s, d) => s + d.count, 0)}
-                sub="zadań"
+                sub={`śr. ${data.avgPerDay}/dzień`}
               />
+              {data.bestDay && (
+                <StatCard
+                  icon={<Calendar className="h-5 w-5" />}
+                  iconClass="bg-emerald-500/15 text-emerald-500"
+                  label="Najlepszy dzień"
+                  value={data.bestDay}
+                  sub="najwięcej zadań"
+                />
+              )}
+              {data.bestHour !== null && (
+                <StatCard
+                  icon={<Clock className="h-5 w-5" />}
+                  iconClass="bg-purple-500/15 text-purple-500"
+                  label="Najlepsza godzina"
+                  value={`${String(data.bestHour).padStart(2, "0")}:00`}
+                  sub="szczyt produktywności"
+                />
+              )}
             </div>
 
-            {/* Completed per day bar chart */}
+            {/* Completed per day line chart (trend) */}
             <div className="bg-card border border-border rounded-xl p-4">
-              <h2 className="text-sm font-semibold text-foreground mb-4">Ukończone zadania — ostatnie 30 dni</h2>
-              <ResponsiveContainer width="100%" height={160}>
-                <BarChart data={data.completedPerDay} barSize={6}>
+              <h2 className="text-sm font-semibold text-foreground mb-4">Trend ukończonych zadań — ostatnie 30 dni</h2>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={data.completedPerDay} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
+                  <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                   <XAxis
                     dataKey="date"
                     tickFormatter={formatDate}
@@ -132,7 +166,13 @@ export default function StatsPage() {
                     axisLine={false}
                     tickLine={false}
                   />
-                  <YAxis hide allowDecimals={false} />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={24}
+                  />
                   <Tooltip
                     formatter={(v: number) => [`${v} zadań`, ""]}
                     labelFormatter={(l) => formatDate(l as string)}
@@ -143,9 +183,94 @@ export default function StatsPage() {
                       fontSize: 12,
                     }}
                   />
-                  <Bar dataKey="count" radius={[3, 3, 0, 0]} fill="var(--primary)" />
-                </BarChart>
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    dot={{ r: 2.5, fill: "var(--primary)" }}
+                    activeDot={{ r: 4 }}
+                  />
+                </LineChart>
               </ResponsiveContainer>
+            </div>
+
+            {/* Day of week + Hour of day */}
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="bg-card border border-border rounded-xl p-4">
+                <h2 className="text-sm font-semibold text-foreground mb-4">Według dnia tygodnia</h2>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={data.dayOfWeekDist} barSize={28}>
+                    <XAxis
+                      dataKey="day"
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis hide allowDecimals={false} />
+                    <Tooltip
+                      formatter={(v: number) => [`${v} zadań`, ""]}
+                      contentStyle={{
+                        background: "var(--card)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {data.dayOfWeekDist.map((d, i) => {
+                        const max = Math.max(...data.dayOfWeekDist.map(x => x.count));
+                        return (
+                          <Cell
+                            key={i}
+                            fill={d.count === max && max > 0 ? "var(--primary)" : "var(--muted-foreground)"}
+                            fillOpacity={d.count === max && max > 0 ? 1 : 0.5}
+                          />
+                        );
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="bg-card border border-border rounded-xl p-4">
+                <h2 className="text-sm font-semibold text-foreground mb-4">Według godziny dnia</h2>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={data.hourOfDayDist} barSize={6}>
+                    <XAxis
+                      dataKey="hour"
+                      tickFormatter={(h) => `${h}h`}
+                      tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                      interval={2}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis hide allowDecimals={false} />
+                    <Tooltip
+                      formatter={(v: number) => [`${v} zadań`, ""]}
+                      labelFormatter={(h) => `${String(h).padStart(2, "0")}:00`}
+                      contentStyle={{
+                        background: "var(--card)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Bar dataKey="count" radius={[2, 2, 0, 0]}>
+                      {data.hourOfDayDist.map((d, i) => {
+                        const max = Math.max(...data.hourOfDayDist.map(x => x.count));
+                        return (
+                          <Cell
+                            key={i}
+                            fill={d.count === max && max > 0 ? "var(--primary)" : "var(--muted-foreground)"}
+                            fillOpacity={d.count === max && max > 0 ? 1 : 0.5}
+                          />
+                        );
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">

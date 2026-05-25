@@ -21,8 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { Plus, Check, Sparkles, Loader2, Trash2, RepeatIcon, Timer } from 'lucide-react'
-import type { UiTask, Category, Recurrence, Subtask } from '@/types'
+import { Plus, Check, Sparkles, Loader2, Trash2, RepeatIcon, Timer, Target } from 'lucide-react'
+import type { UiTask, Category, Recurrence, Subtask, Goal } from '@/types'
 import { nanoid } from 'nanoid'
 
 const PRESET_COLORS = [
@@ -57,6 +57,8 @@ export function TaskModal({
   const [recurrence, setRecurrence] = useState<Recurrence>('none')
   const [recurrenceEnd, setRecurrenceEnd] = useState('')
   const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null)
+  const [goalId, setGoalId] = useState<string | null>(null)
+  const [goals, setGoals] = useState<Goal[]>([])
 
   // Subtasks
   const [subtasks, setSubtasks] = useState<Subtask[]>([])
@@ -87,6 +89,7 @@ export function TaskModal({
       setRecurrenceEnd(task.recurrenceEnd ? task.recurrenceEnd.toISOString().slice(0, 10) : '')
       setSubtasks(task.subtasks ?? [])
       setEstimatedMinutes((task as UiTask & { estimatedMinutes?: number | null }).estimatedMinutes ?? null)
+      setGoalId(task.goalId ?? null)
     } else {
       setTitle('')
       setDescription('')
@@ -98,6 +101,7 @@ export function TaskModal({
       setRecurrenceEnd('')
       setSubtasks([])
       setEstimatedMinutes(null)
+      setGoalId(null)
     }
     setNewSubtaskText('')
     setAdHocText('')
@@ -106,6 +110,15 @@ export function TaskModal({
     setNewCatName('')
     setNewCatColor('#3b82f6')
   }, [task, open])
+
+  // Fetch goals once when modal opens
+  useEffect(() => {
+    if (!open) return
+    fetch('/api/goals')
+      .then(r => r.ok ? r.json() : [])
+      .then(setGoals)
+      .catch(() => setGoals([]))
+  }, [open])
 
   const handleAdHocFill = async () => {
     if (!adHocText.trim()) return
@@ -203,6 +216,7 @@ export function TaskModal({
       recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : undefined,
       subtasks: subtasks.length > 0 ? subtasks : undefined,
       estimatedMinutes: estimatedMinutes ?? undefined,
+      goalId: goalId ?? null,
     })
     onOpenChange(false)
   }
@@ -439,6 +453,47 @@ export function TaskModal({
               </div>
             )}
           </div>
+
+          {/* Goal */}
+          {goals.length > 0 && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Target className="w-3.5 h-3.5" />
+                Cel (opcjonalnie)
+              </Label>
+              <div className="flex gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setGoalId(null)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs border transition-colors',
+                    !goalId
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
+                  )}
+                >
+                  Brak
+                </button>
+                {goals.map((goal) => (
+                  <button
+                    key={goal.id}
+                    type="button"
+                    onClick={() => setGoalId(goal.id)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-md text-xs border transition-colors flex items-center gap-1',
+                      goalId === goal.id
+                        ? 'text-primary-foreground border-transparent'
+                        : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
+                    )}
+                    style={goalId === goal.id ? { backgroundColor: goal.color } : undefined}
+                  >
+                    <span>{goal.emoji}</span>
+                    <span>{goal.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Estimated time */}
           <div className="space-y-2">

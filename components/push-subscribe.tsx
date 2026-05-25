@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Bell, BellOff, Loader2 } from "lucide-react";
+import { Bell, BellOff, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
@@ -71,23 +71,43 @@ export function PushSubscribeButton() {
     }
   };
 
+  const sendTest = async () => {
+    const res = await fetch("/api/push/test", { method: "POST" });
+    if (res.ok) toast.success("Powiadomienie testowe wysłane");
+    else toast.error("Nie udało się wysłać");
+  };
+
   if (state === "unsupported") return null;
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={state === "subscribed" ? unsubscribe : subscribe}
-      disabled={state === "loading"}
-      title={state === "subscribed" ? "Wyłącz powiadomienia push" : "Włącz powiadomienia push"}
-    >
-      {state === "loading" ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : state === "subscribed" ? (
-        <BellOff className="h-4 w-4" />
-      ) : (
-        <Bell className="h-4 w-4" />
+    <div className="flex items-center gap-1">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={state === "subscribed" ? unsubscribe : subscribe}
+        disabled={state === "loading"}
+        title={state === "subscribed" ? "Wyłącz powiadomienia push" : "Włącz powiadomienia push"}
+        className="h-8 w-8 p-0"
+      >
+        {state === "loading" ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : state === "subscribed" ? (
+          <BellOff className="h-4 w-4" />
+        ) : (
+          <Bell className="h-4 w-4" />
+        )}
+      </Button>
+      {state === "subscribed" && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={sendTest}
+          title="Wyślij testowe powiadomienie"
+          className="h-8 w-8 p-0 text-muted-foreground"
+        >
+          <Send className="h-3.5 w-3.5" />
+        </Button>
       )}
-    </Button>
+    </div>
   );
 }

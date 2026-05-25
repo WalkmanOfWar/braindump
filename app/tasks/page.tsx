@@ -261,9 +261,11 @@ export default function TasksPage() {
           deadline: taskData.deadline?.toISOString(),
           priority: taskData.priority,
           categoryId: taskData.categoryId || null,
+          goalId: taskData.goalId ?? null,
           recurrence: taskData.recurrence,
           recurrenceEnd: taskData.recurrenceEnd?.toISOString(),
           subtasks: taskData.subtasks,
+          estimatedMinutes: taskData.estimatedMinutes ?? null,
         }),
       });
       if (res.ok) {
@@ -283,9 +285,11 @@ export default function TasksPage() {
           deadline: taskData.deadline?.toISOString(),
           priority: taskData.priority,
           categoryId: taskData.categoryId || null,
+          goalId: taskData.goalId ?? null,
           recurrence: taskData.recurrence,
           recurrenceEnd: taskData.recurrenceEnd?.toISOString(),
           subtasks: taskData.subtasks,
+          estimatedMinutes: taskData.estimatedMinutes ?? null,
         }),
       });
       if (res.ok) {
