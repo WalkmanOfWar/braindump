@@ -53,8 +53,20 @@ type ViewMode = "week" | "month" | "blocks";
 
 const DAYS_PL = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
 
-// Hours to display in time-blocks view (8:00 – 22:00)
-const BLOCK_HOURS = Array.from({ length: 15 }, (_, i) => i + 8);
+// Half-hour slots for time-blocks view (8:00 – 22:00 in 30-min steps)
+// Each entry is { hour, minute } so we can show 8:00, 8:30, 9:00...
+const BLOCK_SLOTS: { hour: number; minute: number }[] = (() => {
+  const slots: { hour: number; minute: number }[] = [];
+  for (let h = 8; h <= 22; h++) {
+    slots.push({ hour: h, minute: 0 });
+    if (h < 22) slots.push({ hour: h, minute: 30 });
+  }
+  return slots;
+})();
+
+function slotKey(hour: number, minute: number): string {
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Date helpers
@@ -130,25 +142,32 @@ function DraggableTaskCard({
       style={{
         transform: CSS.Transform.toString(transform) ?? undefined,
         borderLeftColor: color,
-        opacity: isDragging ? 0 : 1,
       }}
       className={cn(
         "flex items-center gap-2 px-3 py-2.5 bg-card rounded-lg border border-l-[3px] shadow-sm",
-        "touch-none select-none cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md"
+        "touch-none select-none cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md",
+        // While dragging: hide source entirely. The DragOverlay floats with
+        // the cursor so the user already sees what they're dragging — keeping
+        // a wide ghost in place just creates visual noise next to isOver rings.
+        isDragging && "hidden"
       )}
     >
       <GripVertical className="w-3.5 h-3.5 shrink-0 text-muted-foreground/40" />
       <div className="flex-1 min-w-0">
-        <button
+        {/* Title is a div not a button — dnd-kit needs pointerdown to bubble.
+            Click handler uses a movement guard inside onClick instead. */}
+        <div
+          role="button"
+          tabIndex={0}
           className={cn(
-            "w-full text-left text-sm font-medium leading-tight truncate hover:text-primary transition-colors",
+            "w-full text-left text-sm font-medium leading-tight truncate hover:text-primary transition-colors cursor-pointer",
             task.done && "line-through text-muted-foreground"
           )}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={onOpen}
+          onClick={(e) => { e.stopPropagation(); if (!isDragging) onOpen(); }}
+          onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}
         >
           {task.title}
-        </button>
+        </div>
         {(deadline || task.category) && (
           <div className="flex items-center gap-1.5 mt-0.5">
             {deadline && (
@@ -306,17 +325,25 @@ function DraggableTaskChip({
         transform: CSS.Transform.toString(transform) ?? undefined,
         backgroundColor: `${color}20`,
         color,
-        opacity: isDragging ? 0 : 1,
       }}
-      className="w-full px-1 py-0.5 rounded-md text-[11px] leading-tight touch-none select-none cursor-grab active:cursor-grabbing"
+      className={cn(
+        "w-full px-1 py-0.5 rounded-md text-[11px] leading-tight touch-none select-none cursor-grab active:cursor-grabbing flex items-center gap-1",
+        isDragging && "hidden"
+      )}
     >
-      <button
-        className={cn("w-full text-left truncate", task.done && "line-through opacity-60")}
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={onOpen}
+      <GripVertical
+        className="w-2.5 h-2.5 shrink-0 opacity-50"
+        style={{ color }}
+      />
+      <div
+        role="button"
+        tabIndex={0}
+        className={cn("flex-1 min-w-0 text-left truncate cursor-pointer", task.done && "line-through opacity-60")}
+        onClick={(e) => { e.stopPropagation(); if (!isDragging) onOpen(); }}
+        onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}
       >
         {task.title}
-      </button>
+      </div>
     </div>
   );
 }
@@ -398,29 +425,36 @@ function MonthCell({
 // Time blocks view — hour-slot droppable rows
 // ─────────────────────────────────────────────────────────────────────────────
 
-function HourSlot({
+function TimeSlot({
   dateKey,
   hour,
+  minute,
   tasks,
   onOpenItem,
 }: {
   dateKey: string;
   hour: number;
+  minute: number;
   tasks: TaskWithCategory[];
   onOpenItem: (item: CalendarItem) => void;
 }) {
-  const slotId = `${dateKey}T${String(hour).padStart(2, "0")}`;
+  const slotId = `${dateKey}T${slotKey(hour, minute)}`;
   const { setNodeRef, isOver } = useDroppable({ id: slotId });
-  const label = `${String(hour).padStart(2, "0")}:00`;
-  const isCurrentHour = hour === new Date().getHours() && dateKey === new Date().toLocaleDateString("sv-SE");
+  const label = slotKey(hour, minute);
+  const now = new Date();
+  const isCurrent =
+    dateKey === now.toLocaleDateString("sv-SE") &&
+    hour === now.getHours() &&
+    ((minute === 0 && now.getMinutes() < 30) || (minute === 30 && now.getMinutes() >= 30));
+  const isHalf = minute === 30;
 
   return (
-    <div className="flex gap-3 group min-h-[52px]">
+    <div className="flex gap-3 group min-h-[36px]">
       {/* Time label */}
-      <div className="w-12 shrink-0 pt-1.5 text-right">
+      <div className="w-12 shrink-0 pt-0.5 text-right">
         <span className={cn(
-          "text-xs font-mono",
-          isCurrentHour ? "text-primary font-semibold" : "text-muted-foreground/60"
+          "text-xs font-mono tabular-nums",
+          isCurrent ? "text-primary font-semibold" : isHalf ? "text-muted-foreground/35" : "text-muted-foreground/70"
         )}>
           {label}
         </span>
@@ -430,9 +464,12 @@ function HourSlot({
       <div
         ref={setNodeRef}
         className={cn(
-          "flex-1 border-t border-border/50 pt-1.5 pb-1 space-y-1 transition-colors duration-150 rounded-r-lg px-1",
-          isOver && "bg-primary/8 border-primary/30",
-          isCurrentHour && "border-primary/40"
+          "flex-1 pt-0.5 pb-1 space-y-1 transition-colors duration-150 rounded-md px-1",
+          // Solid line on the hour, dashed line on the half-hour to give a subtle grid
+          isHalf ? "border-t border-dashed border-border/30" : "border-t border-border/60",
+          // Hover highlight: subtle ring instead of fat bg fill — avoids wide purple bar
+          isOver && "ring-2 ring-inset ring-primary/50 bg-primary/5",
+          isCurrent && "border-primary/40"
         )}
       >
         {tasks.map(task => (
@@ -440,8 +477,8 @@ function HourSlot({
         ))}
         {tasks.length === 0 && (
           <div className={cn(
-            "h-5 rounded transition-colors",
-            isOver ? "bg-primary/10" : "group-hover:bg-muted/30"
+            "h-4 rounded transition-colors",
+            isOver ? "bg-primary/15" : "group-hover:bg-muted/30"
           )} />
         )}
       </div>
@@ -464,18 +501,25 @@ function TimeBlocksView({
   const today = isToday(currentDate);
   const dayLabel = currentDate.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" });
 
-  // Tasks for this day, grouped by their deadline hour
-  const tasksByHour = useMemo(() => {
-    const map = new Map<number, TaskWithCategory[]>();
-    BLOCK_HOURS.forEach(h => map.set(h, []));
+  // Tasks for this day, grouped by their deadline slot (30-min bucket).
+  // Key format: "HH:MM" matching slotKey().
+  const tasksBySlot = useMemo(() => {
+    const map = new Map<string, TaskWithCategory[]>();
+    BLOCK_SLOTS.forEach(s => map.set(slotKey(s.hour, s.minute), []));
 
     tasks.forEach(task => {
       if (!task.deadline) return;
       const d = new Date(task.deadline);
       if (d.toLocaleDateString("sv-SE") !== dateKey) return;
-      const h = d.getHours();
-      const slot = BLOCK_HOURS.includes(h) ? h : BLOCK_HOURS[0];
-      map.set(slot, [...(map.get(slot) ?? []), task]);
+      let h = d.getHours();
+      let m = d.getMinutes() < 30 ? 0 : 30;
+      // Clamp out-of-range deadlines to the first/last visible slot
+      const first = BLOCK_SLOTS[0];
+      const last = BLOCK_SLOTS[BLOCK_SLOTS.length - 1];
+      if (h < first.hour) { h = first.hour; m = first.minute; }
+      else if (h > last.hour || (h === last.hour && m > last.minute)) { h = last.hour; m = last.minute; }
+      const key = slotKey(h, m);
+      map.set(key, [...(map.get(key) ?? []), task]);
     });
 
     return map;
@@ -505,14 +549,15 @@ function TimeBlocksView({
           </button>
         </div>
 
-        {/* Hour slots */}
+        {/* Time slots — 30-min granularity */}
         <div className="space-y-0">
-          {BLOCK_HOURS.map(hour => (
-            <HourSlot
-              key={hour}
+          {BLOCK_SLOTS.map(({ hour, minute }) => (
+            <TimeSlot
+              key={`${hour}-${minute}`}
               dateKey={dateKey}
               hour={hour}
-              tasks={tasksByHour.get(hour) ?? []}
+              minute={minute}
+              tasks={tasksBySlot.get(slotKey(hour, minute)) ?? []}
               onOpenItem={onOpenItem}
             />
           ))}
@@ -549,11 +594,11 @@ function DragOverlayCard({ task }: { task: TaskWithCategory | null }) {
   const color = task.category?.color ?? "#6b7280";
   return (
     <div
-      className="flex items-center gap-1.5 px-2.5 py-2 bg-card rounded-lg border border-primary/40 shadow-2xl text-xs font-medium max-w-[160px] rotate-1"
-      style={{ borderLeftWidth: 3, borderLeftColor: color, color }}
+      className="flex items-center gap-2 px-3 py-2 bg-card rounded-lg border border-primary/40 shadow-2xl text-sm font-medium min-w-[180px] max-w-[360px] cursor-grabbing"
+      style={{ borderLeftWidth: 3, borderLeftColor: color }}
     >
-      <GripVertical className="w-3 h-3 shrink-0 opacity-40" />
-      <span className="truncate">{task.title}</span>
+      <GripVertical className="w-3.5 h-3.5 shrink-0 text-muted-foreground/40" />
+      <span className="truncate text-foreground">{task.title}</span>
     </div>
   );
 }
@@ -682,9 +727,11 @@ export default function CalendarPage() {
     let newDeadline: Date;
 
     if (overId.includes("T")) {
-      const [datePart, hourPart] = overId.split("T");
+      // Blocks view: "YYYY-MM-DDTHH:MM" (30-min granularity) or legacy "YYYY-MM-DDTHH"
+      const [datePart, timePart] = overId.split("T");
       const [y, m, d] = datePart.split("-").map(Number);
-      newDeadline = new Date(y, m - 1, d, Number(hourPart), 0, 0, 0);
+      const [hh, mm = "0"] = timePart.split(":");
+      newDeadline = new Date(y, m - 1, d, Number(hh), Number(mm), 0, 0);
     } else {
       const [y, m, d] = overId.split("-").map(Number);
       newDeadline = new Date(y, m - 1, d);
@@ -696,7 +743,20 @@ export default function CalendarPage() {
       }
     }
 
-    if (task.deadline && sameDay(task.deadline, newDeadline)) return;
+    // Skip when nothing actually changes:
+    // - Day-drop targets (no T in id) only care about the date
+    // - Hour-drop targets care about minute precision too
+    if (task.deadline) {
+      const existing = new Date(task.deadline);
+      const isHourDrop = overId.includes("T");
+      if (isHourDrop) {
+        if (
+          existing.getTime() === newDeadline.getTime()
+        ) return;
+      } else if (sameDay(existing, newDeadline)) {
+        return;
+      }
+    }
 
     const originalDeadline = task.deadline;
     setTasks((prev) =>

@@ -7,6 +7,8 @@ import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts-provi
 import { CommandPalette } from "@/components/command-palette";
 import { PomodoroProvider } from "@/components/pomodoro-timer";
 import { FocusModeProvider } from "@/components/focus-mode";
+import { GoalsProvider } from "@/components/goals-provider";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -55,13 +57,15 @@ export default function RootLayout({
         <ThemeProvider>
           <SessionProvider>
             <PomodoroProvider>
-              <FocusModeProvider>
-              {children}
-              </FocusModeProvider>
-              <Toaster richColors position="bottom-right" />
-              <ServiceWorkerRegistration />
-              <KeyboardShortcutsProvider />
-              <CommandPalette />
+              <GoalsProvider>
+                <FocusModeProvider>
+                <ErrorBoundary>{children}</ErrorBoundary>
+                </FocusModeProvider>
+                <Toaster richColors position="bottom-right" />
+                <ServiceWorkerRegistration />
+                <KeyboardShortcutsProvider />
+                <CommandPalette />
+              </GoalsProvider>
             </PomodoroProvider>
           </SessionProvider>
         </ThemeProvider>
