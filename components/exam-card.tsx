@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, formatDate, getDaysUntil, getDateStr, getTodayStr } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -33,24 +33,13 @@ interface ExamCardProps {
   onEdit?: (exam: ExamWithSessions) => void;
 }
 
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("pl-PL", {
-    day: "numeric",
-    month: "short",
-  });
-}
-
-function getDaysUntil(date: Date | string): number {
-  const now = new Date();
-  return Math.ceil((new Date(date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-}
-
 export function ExamCard({ exam, onToggleSession, onDelete, onEdit }: ExamCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { start: startPomodoro } = usePomodoroTimer();
 
-  const daysUntil = getDaysUntil(exam.examDate);
+  const daysUntil = getDaysUntil(new Date(exam.examDate));
+  const todayStr = getTodayStr();
   const category = exam.category;
 
   const completedSessions = exam.studySessions.filter((s) => s.done).length;
@@ -65,24 +54,6 @@ export function ExamCard({ exam, onToggleSession, onDelete, onEdit }: ExamCardPr
     return "bg-urgency-low/15 text-urgency-low border border-urgency-low/25";
   };
 
-  const isToday = (date: Date | string) => {
-    const today = new Date();
-    const d = new Date(date);
-    return (
-      d.getDate() === today.getDate() &&
-      d.getMonth() === today.getMonth() &&
-      d.getFullYear() === today.getFullYear()
-    );
-  };
-
-  const isPast = (date: Date | string) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    return d < today;
-  };
-
   return (
     <>
     <div className="border border-border rounded-lg bg-card overflow-hidden">
@@ -91,7 +62,7 @@ export function ExamCard({ exam, onToggleSession, onDelete, onEdit }: ExamCardPr
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-foreground mb-1 pr-8">{exam.title}</h3>
             <p className="text-sm text-muted-foreground mb-2">
-              {formatDate(exam.examDate)}
+              {formatDate(new Date(exam.examDate))}
             </p>
 
             <div className="flex items-center gap-2 flex-wrap">
@@ -177,8 +148,9 @@ export function ExamCard({ exam, onToggleSession, onDelete, onEdit }: ExamCardPr
         <div className="border-t border-border bg-secondary/30">
           <div className="divide-y divide-border">
             {exam.studySessions.map((session) => {
-              const sessionIsToday = isToday(session.date);
-              const sessionIsPast = isPast(session.date) && !sessionIsToday;
+              const sessionDateStr = getDateStr(session.date);
+              const sessionIsToday = sessionDateStr === todayStr;
+              const sessionIsPast = sessionDateStr < todayStr;
 
               return (
                 <div
@@ -203,7 +175,7 @@ export function ExamCard({ exam, onToggleSession, onDelete, onEdit }: ExamCardPr
                       sessionIsPast && session.done && "line-through"
                     )}
                   >
-                    {formatDate(session.date)}
+                    {formatDate(new Date(session.date))}
                   </span>
 
                   <span
