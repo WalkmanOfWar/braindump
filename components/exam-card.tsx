@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ChevronDown, ChevronUp, MoreHorizontal, Trash2, Pencil, Play } from "lucide-react";
+import { ChevronDown, ChevronUp, MoreHorizontal, Trash2, Pencil, Play, Lightbulb } from "lucide-react";
 import type { ExamWithSessions } from "@/types";
 import { usePomodoroTimer } from "@/components/pomodoro-timer";
 
@@ -31,9 +31,10 @@ interface ExamCardProps {
   onToggleSession: (examId: string, sessionId: string, done: boolean) => void;
   onDelete?: (examId: string) => void;
   onEdit?: (exam: ExamWithSessions) => void;
+  onGenerateFlashcards?: (exam: ExamWithSessions) => void;
 }
 
-export function ExamCard({ exam, onToggleSession, onDelete, onEdit }: ExamCardProps) {
+export function ExamCard({ exam, onToggleSession, onDelete, onEdit, onGenerateFlashcards }: ExamCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { start: startPomodoro } = usePomodoroTimer();
@@ -99,6 +100,12 @@ export function ExamCard({ exam, onToggleSession, onDelete, onEdit }: ExamCardPr
                 <DropdownMenuItem onClick={() => onEdit(exam)}>
                   <Pencil className="h-4 w-4 mr-2" />
                   Edytuj egzamin
+                </DropdownMenuItem>
+              )}
+              {onGenerateFlashcards && (
+                <DropdownMenuItem onClick={() => onGenerateFlashcards(exam)}>
+                  <Lightbulb className="h-4 w-4 mr-2" />
+                  Generuj fiszki
                 </DropdownMenuItem>
               )}
               {onDelete && (
