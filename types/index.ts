@@ -24,6 +24,8 @@ export type UiTask = {
   recurrenceEnd?: Date;
   subtasks?: Subtask[];
   estimatedMinutes?: number | null;
+  intentionWhen?: string | null;
+  intentionWhere?: string | null;
 };
 
 export type TaskWithCategory = Task & {

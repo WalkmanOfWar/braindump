@@ -82,8 +82,17 @@ Otwórz [http://localhost:3000](http://localhost:3000).
 Do szybkiego sprawdzenia jakości:
 
 ```bash
-npx tsc --noEmit
+npm run check
+```
+
+Pojedyncze komendy:
+
+```bash
 npm run lint
+npm run typecheck
+npm run test
+npm run coverage
+npm run format:check
 ```
 
 `npm run build` wymaga kompletu zmiennych środowiskowych używanych przez route'y budowane po stronie serwera. W szczególności cron-y push wymagają VAPID.
@@ -220,7 +229,7 @@ GitHub Actions uruchamia workflow `Type-check & Lint` dla PR-ów do `main`, push
 Pipeline:
 
 ```text
-npm install -> npx prisma generate -> npx tsc --noEmit -> npm run lint
+npm install -> npx prisma generate -> npm run check
 ```
 
 ---
@@ -231,4 +240,5 @@ npm install -> npx prisma generate -> npx tsc --noEmit -> npm run lint
 - API routes sprawdzają sesję przez NextAuth.
 - Brak `ANTHROPIC_API_KEY` powinien skutkować kontrolowanym błędem `503` w endpointach AI.
 - Kalendarz używa drag & drop z krokiem 30 minut w widoku blokowym.
-- `npm run lint` i `npx tsc --noEmit` przechodzą bez błędów.
+- `npm run check` uruchamia lint, type-check i testy Vitest.
+- Prettier jest dodany jako narzędzie lokalne (`npm run format`, `npm run format:check`), ale nie jest jeszcze wymagany w CI, bo repo wymaga osobnego baseline formatowania.

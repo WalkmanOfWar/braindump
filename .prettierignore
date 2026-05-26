@@ -1,0 +1,9 @@
+node_modules
+.next
+.vercel
+coverage
+package-lock.json
+pnpm-lock.yaml
+tsconfig.tsbuildinfo
+public/sw.js
+public/workbox-*.js

@@ -69,6 +69,8 @@ export function toUiTask(t: TaskWithCategory): UiTask {
     recurrenceEnd: t.recurrenceEnd ? new Date(t.recurrenceEnd) : undefined,
     subtasks: Array.isArray(t.subtasks) ? (t.subtasks as Subtask[]) : undefined,
     estimatedMinutes: (t as TaskWithCategory & { estimatedMinutes?: number | null }).estimatedMinutes ?? null,
+    intentionWhen: (t as TaskWithCategory & { intentionWhen?: string | null }).intentionWhen ?? null,
+    intentionWhere: (t as TaskWithCategory & { intentionWhere?: string | null }).intentionWhere ?? null,
   };
 }
 

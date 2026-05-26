@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, ClipboardList, Sparkles, Search, AlertCircle, CheckSquare, Square, Trash2, CheckCheck, Download, LayoutGrid, List, Grid2x2 } from "lucide-react";
+import { Plus, ClipboardList, Sparkles, Search, AlertCircle, CheckSquare, Square, Trash2, CheckCheck, Download, LayoutGrid, List, Grid2x2, Zap } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { toast } from "sonner";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
@@ -71,6 +71,7 @@ export default function TasksPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [quickFilter, setQuickFilter] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useKeyboardShortcuts([
@@ -116,6 +117,9 @@ export default function TasksPage() {
         (t.description ?? "").toLowerCase().includes(q)
       );
     })
+    .filter((t) =>
+      quickFilter ? !t.done && t.estimatedMinutes != null && t.estimatedMinutes <= 2 : true
+    )
     .sort((a, b) => {
       if (sortBy === "deadline") {
         const dA = a.deadline ? new Date(a.deadline).getTime() : Infinity;
@@ -266,6 +270,8 @@ export default function TasksPage() {
           recurrenceEnd: taskData.recurrenceEnd?.toISOString(),
           subtasks: taskData.subtasks,
           estimatedMinutes: taskData.estimatedMinutes ?? null,
+          intentionWhen: taskData.intentionWhen ?? null,
+          intentionWhere: taskData.intentionWhere ?? null,
         }),
       });
       if (res.ok) {
@@ -290,6 +296,8 @@ export default function TasksPage() {
           recurrenceEnd: taskData.recurrenceEnd?.toISOString(),
           subtasks: taskData.subtasks,
           estimatedMinutes: taskData.estimatedMinutes ?? null,
+          intentionWhen: taskData.intentionWhen ?? null,
+          intentionWhere: taskData.intentionWhere ?? null,
         }),
       });
       if (res.ok) {
@@ -438,6 +446,18 @@ export default function TasksPage() {
                     Zaznacz
                   </>
                 )}
+              </Button>
+            )}
+            {!selectionMode && (
+              <Button
+                variant={quickFilter ? "default" : "outline"}
+                size="sm"
+                onClick={() => setQuickFilter((v) => !v)}
+                disabled={isLoading}
+                title="Pokaż tylko zadania ≤ 2 min (zasada 2 minut)"
+              >
+                <Zap className="h-4 w-4 mr-1" />
+                2 min
               </Button>
             )}
             {!selectionMode && (
