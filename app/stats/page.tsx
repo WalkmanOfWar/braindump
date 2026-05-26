@@ -239,8 +239,8 @@ export default function StatsPage() {
                     width={24}
                   />
                   <Tooltip
-                    formatter={(v: number) => [`${v} zadań`, ""]}
-                    labelFormatter={(l) => formatDate(l as string)}
+                    formatter={(v: unknown) => [`${v ?? 0} zadań`, ""]}
+                    labelFormatter={(l: unknown) => formatDate(String(l))}
                     contentStyle={{
                       background: "var(--card)",
                       border: "1px solid var(--border)",
@@ -274,7 +274,7 @@ export default function StatsPage() {
                     />
                     <YAxis hide allowDecimals={false} />
                     <Tooltip
-                      formatter={(v: number) => [`${v} zadań`, ""]}
+                      formatter={(v: unknown) => [`${v ?? 0} zadań`, ""]}
                       contentStyle={{
                         background: "var(--card)",
                         border: "1px solid var(--border)",
@@ -312,8 +312,8 @@ export default function StatsPage() {
                     />
                     <YAxis hide allowDecimals={false} />
                     <Tooltip
-                      formatter={(v: number) => [`${v} zadań`, ""]}
-                      labelFormatter={(h) => `${String(h).padStart(2, "0")}:00`}
+                      formatter={(v: unknown) => [`${v ?? 0} zadań`, ""]}
+                      labelFormatter={(h: unknown) => `${String(h).padStart(2, "0")}:00`}
                       contentStyle={{
                         background: "var(--card)",
                         border: "1px solid var(--border)",
@@ -353,7 +353,7 @@ export default function StatsPage() {
                     />
                     <YAxis hide allowDecimals={false} />
                     <Tooltip
-                      formatter={(v: number) => [`${v} zadań`, ""]}
+                      formatter={(v: unknown) => [`${v ?? 0} zadań`, ""]}
                       contentStyle={{
                         background: "var(--card)",
                         border: "1px solid var(--border)",
@@ -399,7 +399,7 @@ export default function StatsPage() {
                         ))}
                       </Pie>
                       <Tooltip
-                        formatter={(v: number, name: string) => [`${v} zadań`, name]}
+                        formatter={(v: unknown, name: unknown) => [`${v ?? 0} zadań`, String(name)]}
                         contentStyle={{
                           background: "var(--card)",
                           border: "1px solid var(--border)",
@@ -492,8 +492,8 @@ export default function StatsPage() {
                   />
                   <YAxis hide allowDecimals={false} />
                   <Tooltip
-                    formatter={(v: number) => [`${v} powtórek`, ""]}
-                    labelFormatter={(d: string) => { const dt = new Date(d); return `${dt.getDate()}.${dt.getMonth() + 1}`; }}
+                    formatter={(v: unknown) => [`${v ?? 0} powtórek`, ""]}
+                    labelFormatter={(d: unknown) => { const dt = new Date(String(d)); return `${dt.getDate()}.${dt.getMonth() + 1}`; }}
                     contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
                   />
                   <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} />
