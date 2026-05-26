@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { Plus, Check, Sparkles, Loader2, Trash2, RepeatIcon, Timer } from 'lucide-react'
+import { Plus, Check, Sparkles, Loader2, Trash2, RepeatIcon, Timer, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
 import type { UiTask, Category, Recurrence, Subtask } from '@/types'
 import { nanoid } from 'nanoid'
 
@@ -57,6 +57,9 @@ export function TaskModal({
   const [recurrence, setRecurrence] = useState<Recurrence>('none')
   const [recurrenceEnd, setRecurrenceEnd] = useState('')
   const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null)
+  const [intentionWhen, setIntentionWhen] = useState('')
+  const [intentionWhere, setIntentionWhere] = useState('')
+  const [intentionOpen, setIntentionOpen] = useState(false)
 
   // Subtasks
   const [subtasks, setSubtasks] = useState<Subtask[]>([])
@@ -87,6 +90,9 @@ export function TaskModal({
       setRecurrenceEnd(task.recurrenceEnd ? task.recurrenceEnd.toISOString().slice(0, 10) : '')
       setSubtasks(task.subtasks ?? [])
       setEstimatedMinutes((task as UiTask & { estimatedMinutes?: number | null }).estimatedMinutes ?? null)
+      setIntentionWhen((task as UiTask).intentionWhen ?? '')
+      setIntentionWhere((task as UiTask).intentionWhere ?? '')
+      setIntentionOpen(!!(task as UiTask).intentionWhen || !!(task as UiTask).intentionWhere)
     } else {
       setTitle('')
       setDescription('')
@@ -98,6 +104,9 @@ export function TaskModal({
       setRecurrenceEnd('')
       setSubtasks([])
       setEstimatedMinutes(null)
+      setIntentionWhen('')
+      setIntentionWhere('')
+      setIntentionOpen(false)
     }
     setNewSubtaskText('')
     setAdHocText('')
@@ -203,6 +212,8 @@ export function TaskModal({
       recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : undefined,
       subtasks: subtasks.length > 0 ? subtasks : undefined,
       estimatedMinutes: estimatedMinutes ?? undefined,
+      intentionWhen: intentionWhen.trim() || null,
+      intentionWhere: intentionWhere.trim() || null,
     })
     onOpenChange(false)
   }
@@ -448,6 +459,7 @@ export function TaskModal({
             </Label>
             <div className="flex gap-1.5 flex-wrap">
               {[
+                { label: '⚡ 2 min', value: 2 },
                 { label: '15 min', value: 15 },
                 { label: '30 min', value: 30 },
                 { label: '1 godz', value: 60 },
@@ -469,6 +481,47 @@ export function TaskModal({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Implementation Intentions (Gollwitzer 1999) */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setIntentionOpen((v) => !v)}
+              className="w-full flex items-center justify-between px-3 py-2.5 text-sm hover:bg-muted/40 transition-colors"
+            >
+              <span className="flex items-center gap-2 font-medium">
+                <MapPin className="w-3.5 h-3.5 text-primary" />
+                Kiedy i gdzie to zrobię?
+                <span className="text-xs text-muted-foreground font-normal">opcjonalnie</span>
+              </span>
+              {intentionOpen
+                ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+                : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+              }
+            </button>
+
+            {intentionOpen && (
+              <div className="px-3 pb-3 space-y-2 border-t border-border bg-muted/20">
+                <p className="text-[10px] text-muted-foreground pt-2">
+                  Konkretny plan "kiedy i gdzie" zwiększa szansę realizacji o ~65% (Gollwitzer, 1999).
+                </p>
+                <Input
+                  placeholder="Kiedy? np. jutro o 16:00, w środę rano..."
+                  value={intentionWhen}
+                  onChange={(e) => setIntentionWhen(e.target.value)}
+                  className="text-sm h-8"
+                  maxLength={200}
+                />
+                <Input
+                  placeholder="Gdzie? np. w bibliotece, przy biurku, w kawiarni..."
+                  value={intentionWhere}
+                  onChange={(e) => setIntentionWhere(e.target.value)}
+                  className="text-sm h-8"
+                  maxLength={200}
+                />
+              </div>
+            )}
           </div>
 
           {/* Recurrence */}

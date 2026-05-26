@@ -17,6 +17,8 @@ export const TaskCreateSchema = z.object({
   recurrenceEnd: z.string().optional().nullable(),
   subtasks: z.array(SubtaskSchema).optional().nullable(),
   estimatedMinutes: z.number().int().positive().optional().nullable(),
+  intentionWhen: z.string().max(200).optional().nullable(),
+  intentionWhere: z.string().max(200).optional().nullable(),
 });
 
 export const TaskUpdateSchema = TaskCreateSchema.partial().extend({

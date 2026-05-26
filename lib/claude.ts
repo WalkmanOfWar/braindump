@@ -292,6 +292,39 @@ export async function generateQuiz(
   return JSON.parse(text.replace(/```json|```/g, "").trim()) as QuizQuestion[];
 }
 
+// ─── Study prompts (Elaborative Interrogation + Concrete Examples) ───────────
+
+const STUDY_PROMPTS_SYSTEM = `Jesteś tutorem akademickim. Dla podanego tematu egzaminu generujesz dwa zestawy:
+1. Pytania pogłębiające (Elaborative Interrogation) — pytania "Dlaczego?", "Jak?", "Skąd to wynika?" które zmuszają do aktywnego myślenia
+2. Konkretne przykłady — 2-3 przykłady z życia codziennego lub praktyki ilustrujące abstrakcyjne pojęcia
+
+Zasady:
+- Pytania: 3-4 pytania, każde zaczyna się od "Dlaczego", "Jak", "Co łączy", "Skąd", "W jaki sposób"
+- Przykłady: krótkie, konkretne, zrozumiałe, powiązane z tematem
+- Pisz po polsku, zwięźle
+
+Odpowiedz WYŁĄCZNIE czystym JSON:
+{"questions":["...","...","..."],"examples":["...","...","..."]}`;
+
+export async function generateStudyPrompts(
+  topic: string,
+  examTitle: string
+): Promise<{ questions: string[]; examples: string[] }> {
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 1024,
+    system: [{ type: "text", text: STUDY_PROMPTS_SYSTEM, cache_control: { type: "ephemeral" } }],
+    messages: [
+      {
+        role: "user",
+        content: `Egzamin: ${examTitle}\nTemat: ${topic}`,
+      },
+    ],
+  });
+  const text = (msg.content[0] as { type: string; text: string }).text;
+  return JSON.parse(text.replace(/```json|```/g, "").trim()) as { questions: string[]; examples: string[] };
+}
+
 // ─── Feynman reflection evaluation ──────────────────────────────────────────
 
 const REFLECTION_SYSTEM = `Jesteś tutorem akademickim oceniającym wyjaśnienie tematu techniką Feynmana.

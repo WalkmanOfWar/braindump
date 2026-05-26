@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { title, description, deadline, priority, categoryId, goalId, estimatedMinutes, recurrence, recurrenceEnd, subtasks } = parsed.data;
+  const { title, description, deadline, priority, categoryId, goalId, estimatedMinutes, recurrence, recurrenceEnd, subtasks, intentionWhen, intentionWhere } = parsed.data;
 
   const task = await prisma.task.create({
     data: {
@@ -54,6 +54,8 @@ export async function POST(req: NextRequest) {
       categoryId: categoryId ?? null,
       goalId: goalId ?? null,
       estimatedMinutes: estimatedMinutes ?? null,
+      intentionWhen: intentionWhen ?? null,
+      intentionWhere: intentionWhere ?? null,
       userId: session.user.id,
       recurrence: recurrence ?? "none",
       recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,

@@ -30,6 +30,6 @@ export default [
     },
   },
   {
-    ignores: [".next/**", "node_modules/**", "prisma/**"],
+    ignores: [".next/**", "coverage/**", "node_modules/**", "prisma/**"],
   },
 ];
