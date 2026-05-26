@@ -38,7 +38,6 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -127,7 +126,7 @@ function DraggableTaskCard({
   onOpen: () => void;
 }) {
   const color = task.category?.color ?? "#6b7280";
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
+  const { attributes, listeners, setNodeRef, isDragging } =
     useDraggable({ id: task.id, data: { task } });
 
   const deadline = task.deadline
@@ -140,16 +139,14 @@ function DraggableTaskCard({
       {...listeners}
       {...attributes}
       style={{
-        transform: CSS.Transform.toString(transform) ?? undefined,
         borderLeftColor: color,
       }}
       className={cn(
         "flex items-center gap-2 px-3 py-2.5 bg-card rounded-lg border border-l-[3px] shadow-sm",
         "touch-none select-none cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md",
-        // While dragging: hide source entirely. The DragOverlay floats with
-        // the cursor so the user already sees what they're dragging — keeping
-        // a wide ghost in place just creates visual noise next to isOver rings.
-        isDragging && "hidden"
+        // Keep the source mounted so dnd-kit can keep measuring it while the
+        // DragOverlay follows the pointer.
+        isDragging && "opacity-0"
       )}
     >
       <GripVertical className="w-3.5 h-3.5 shrink-0 text-muted-foreground/40" />
@@ -239,17 +236,17 @@ function WeekColumn({
   return (
     <div
       className={cn(
-        "flex flex-col min-w-[150px] flex-1 rounded-2xl border border-border bg-card/60 overflow-hidden transition-all duration-150",
-        today && "ring-2 ring-primary/40 ring-offset-1 ring-offset-background",
-        isOver && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+        "flex flex-col min-w-[150px] flex-1 rounded-2xl border border-border bg-card/60 overflow-hidden transition-[background-color,border-color,box-shadow] duration-150",
+        today && "border-primary/30 bg-primary/[0.03]",
+        isOver && "border-primary/45 bg-primary/[0.04] shadow-[0_0_0_2px_hsl(var(--primary)/0.12)]"
       )}
     >
       {/* Column header */}
       <div
         className={cn(
           "flex flex-col items-center px-2 py-2.5 border-b border-border select-none",
-          today ? "bg-primary/5" : "",
-          isOver && "bg-primary/5"
+          today ? "bg-primary/[0.04]" : "",
+          isOver && "bg-primary/[0.05]"
         )}
       >
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -270,7 +267,7 @@ function WeekColumn({
         ref={setNodeRef}
         className={cn(
           "flex-1 min-h-[140px] p-2 space-y-1.5 transition-colors duration-150",
-          isOver && "bg-primary/5"
+          isOver && "bg-primary/[0.035]"
         )}
       >
         {items.length === 0 ? (
@@ -313,7 +310,7 @@ function DraggableTaskChip({
   onOpen: () => void;
 }) {
   const color = task.category?.color ?? "#6b7280";
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
+  const { attributes, listeners, setNodeRef, isDragging } =
     useDraggable({ id: task.id, data: { task } });
 
   return (
@@ -322,17 +319,19 @@ function DraggableTaskChip({
       {...listeners}
       {...attributes}
       style={{
-        transform: CSS.Transform.toString(transform) ?? undefined,
-        backgroundColor: `${color}20`,
+        backgroundColor: `${color}18`,
+        borderLeftColor: color,
         color,
       }}
       className={cn(
-        "w-full px-1 py-0.5 rounded-md text-[11px] leading-tight touch-none select-none cursor-grab active:cursor-grabbing flex items-center gap-1",
-        isDragging && "hidden"
+        "w-full min-h-6 rounded-md border border-transparent border-l-2 px-1.5 py-1 text-[11px] leading-tight shadow-sm",
+        "touch-none select-none cursor-grab active:cursor-grabbing flex items-center gap-1 transition-[background-color,box-shadow,opacity]",
+        "hover:shadow-md hover:bg-background/70",
+        isDragging && "opacity-0"
       )}
     >
       <GripVertical
-        className="w-2.5 h-2.5 shrink-0 opacity-50"
+        className="w-2.5 h-2.5 shrink-0 opacity-45"
         style={{ color }}
       />
       <div
@@ -371,10 +370,10 @@ function MonthCell({
     <div
       ref={setNodeRef}
       className={cn(
-        "min-h-[90px] sm:min-h-[110px] p-2 rounded-xl border transition-colors duration-150",
+        "min-h-[100px] sm:min-h-[118px] p-2 rounded-xl border transition-[background-color,border-color,box-shadow] duration-150",
         !inMonth && "opacity-35",
-        today ? "bg-primary/5 border-primary/40" : "border-border bg-card/50",
-        isOver && "bg-primary/10 border-primary/50 ring-1 ring-primary/30"
+        today ? "bg-primary/[0.04] border-primary/30" : "border-border bg-card/50",
+        isOver && "bg-primary/[0.05] border-primary/45 shadow-[0_0_0_2px_hsl(var(--primary)/0.10)]"
       )}
     >
       {/* Day number */}
@@ -390,7 +389,7 @@ function MonthCell({
       </div>
 
       {/* Event pills */}
-      <div className="space-y-0.5">
+      <div className="space-y-1">
         {items.slice(0, 2).map((item, j) =>
           item.type === "task" ? (
             <DraggableTaskChip
@@ -403,7 +402,7 @@ function MonthCell({
               key={`mc-sess-${item.data.id}-${j}`}
               onClick={() => onOpenItem(item)}
               className={cn(
-                "w-full text-left px-1 py-0.5 rounded-md text-[11px] leading-tight truncate bg-accent/15 text-accent hover:bg-accent/25 transition-colors",
+                "w-full min-h-6 text-left px-1.5 py-1 rounded-md border border-transparent border-l-2 border-l-accent text-[11px] leading-tight truncate bg-accent/10 text-accent hover:bg-accent/20 shadow-sm transition-colors",
                 item.data.done && "line-through opacity-50"
               )}
             >
@@ -449,7 +448,7 @@ function TimeSlot({
   const isHalf = minute === 30;
 
   return (
-    <div className="flex gap-3 group min-h-[36px]">
+    <div className="flex gap-3 group min-h-[44px]">
       {/* Time label */}
       <div className="w-12 shrink-0 pt-0.5 text-right">
         <span className={cn(
@@ -464,11 +463,10 @@ function TimeSlot({
       <div
         ref={setNodeRef}
         className={cn(
-          "flex-1 pt-0.5 pb-1 space-y-1 transition-colors duration-150 rounded-md px-1",
-          // Solid line on the hour, dashed line on the half-hour to give a subtle grid
+          "flex-1 min-h-10 px-1 py-1 space-y-1 rounded-md transition-[background-color,border-color,box-shadow]",
+          // Solid line on the hour, dashed line on the half-hour: one target equals 30 minutes.
           isHalf ? "border-t border-dashed border-border/30" : "border-t border-border/60",
-          // Hover highlight: subtle ring instead of fat bg fill — avoids wide purple bar
-          isOver && "ring-2 ring-inset ring-primary/50 bg-primary/5",
+          isOver && "bg-primary/[0.045] shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.16)]",
           isCurrent && "border-primary/40"
         )}
       >
@@ -477,8 +475,8 @@ function TimeSlot({
         ))}
         {tasks.length === 0 && (
           <div className={cn(
-            "h-4 rounded transition-colors",
-            isOver ? "bg-primary/15" : "group-hover:bg-muted/30"
+            "h-8 rounded-md border border-transparent transition-[background-color,border-color]",
+            isOver ? "border-primary/20 bg-primary/10" : "group-hover:border-border/60 group-hover:bg-muted/25"
           )} />
         )}
       </div>
@@ -594,8 +592,12 @@ function DragOverlayCard({ task }: { task: TaskWithCategory | null }) {
   const color = task.category?.color ?? "#6b7280";
   return (
     <div
-      className="flex items-center gap-2 px-3 py-2 bg-card rounded-lg border border-primary/40 shadow-2xl text-sm font-medium min-w-[180px] max-w-[360px] cursor-grabbing"
-      style={{ borderLeftWidth: 3, borderLeftColor: color }}
+      className="flex w-[220px] max-w-[min(280px,calc(100vw-32px))] items-center gap-2 rounded-lg border border-primary/30 bg-background/95 px-3 py-2 text-sm font-medium shadow-2xl ring-1 ring-primary/15 backdrop-blur-sm cursor-grabbing"
+      style={{
+        borderLeftWidth: 3,
+        borderLeftColor: color,
+        boxShadow: "0 18px 45px rgba(15, 23, 42, 0.18)",
+      }}
     >
       <GripVertical className="w-3.5 h-3.5 shrink-0 text-muted-foreground/40" />
       <span className="truncate text-foreground">{task.title}</span>
@@ -897,7 +899,7 @@ export default function CalendarPage() {
           )}
 
           {/* Drag overlay — outside both view branches, always rendered */}
-          <DragOverlay dropAnimation={null}>
+          <DragOverlay dropAnimation={null} adjustScale={false}>
             <DragOverlayCard task={activeTask} />
           </DragOverlay>
 

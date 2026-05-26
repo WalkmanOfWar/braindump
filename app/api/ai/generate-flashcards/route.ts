@@ -5,8 +5,6 @@ import { prisma } from "@/lib/prisma";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 const GENERATE_SYSTEM = `Jesteś ekspertem w tworzeniu fiszek do nauki metodą spaced repetition (powtarzania w odstępach).
 
 Zasady tworzenia dobrych fiszek:
@@ -27,37 +25,71 @@ const RequestSchema = z.object({
   count: z.number().int().min(3).max(30).default(10),
 });
 
+const GeneratedCardsSchema = z.array(z.object({
+  front: z.string().min(1),
+  back: z.string().min(1),
+})).min(1);
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Brak autoryzacji" }, { status: 401 });
 
-  const body: unknown = await req.json();
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json(
+      { error: "Brak klucza API Anthropic. Dodaj ANTHROPIC_API_KEY do zmiennych środowiskowych." },
+      { status: 503 }
+    );
+  }
+
+  const body: unknown = await req.json().catch(() => null);
   const parsed = RequestSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Nieprawidłowe dane" },
+      { status: 400 }
+    );
+  }
 
   const { deckId, topics, count } = parsed.data;
 
   const deck = await prisma.flashcardDeck.findFirst({ where: { id: deckId, userId: session.user.id } });
   if (!deck) return NextResponse.json({ error: "Nie znaleziono talii" }, { status: 404 });
 
-  const msg = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 4096,
-    system: [{ type: "text", text: GENERATE_SYSTEM, cache_control: { type: "ephemeral" } }],
-    messages: [
-      {
-        role: "user",
-        content: `Wygeneruj dokładnie ${count} fiszek do nauki następujących tematów:\n${topics.map((t) => `- ${t}`).join("\n")}\n\nTalia: "${deck.title}"`,
-      },
-    ],
-  });
+  try {
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const msg = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 4096,
+      system: [{ type: "text", text: GENERATE_SYSTEM, cache_control: { type: "ephemeral" } }],
+      messages: [
+        {
+          role: "user",
+          content: `Wygeneruj dokładnie ${count} fiszek do nauki następujących tematów:\n${topics.map((t) => `- ${t}`).join("\n")}\n\nTalia: "${deck.title}"`,
+        },
+      ],
+    });
 
-  const text = (msg.content[0] as { type: string; text: string }).text;
-  const cards = JSON.parse(text.replace(/```json|```/g, "").trim()) as { front: string; back: string }[];
+    const firstBlock = msg.content[0];
+    if (!firstBlock || firstBlock.type !== "text") {
+      return NextResponse.json({ error: "AI zwróciło pustą odpowiedź" }, { status: 502 });
+    }
 
-  const created = await prisma.flashcard.createMany({
-    data: cards.map((c) => ({ front: c.front, back: c.back, deckId })),
-  });
+    const parsedCards: unknown = JSON.parse(firstBlock.text.replace(/```json|```/g, "").trim());
+    const cardsResult = GeneratedCardsSchema.safeParse(parsedCards);
+    if (!cardsResult.success) {
+      return NextResponse.json({ error: "AI zwróciło nieprawidłowy format fiszek" }, { status: 502 });
+    }
 
-  return NextResponse.json({ created: created.count, cards });
+    const created = await prisma.flashcard.createMany({
+      data: cardsResult.data.map((c) => ({ front: c.front, back: c.back, deckId })),
+    });
+
+    return NextResponse.json({ created: created.count, cards: cardsResult.data });
+  } catch (error) {
+    console.error("[generate-flashcards]", error);
+    return NextResponse.json(
+      { error: "Nie udało się wygenerować fiszek. Spróbuj ponownie za chwilę." },
+      { status: 500 }
+    );
+  }
 }

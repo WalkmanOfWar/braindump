@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle2, XCircle, Trophy } from "lucide-react";
-import { toast } from "sonner";
 import type { QuizQuestion } from "@/lib/claude";
 
 interface QuizModalProps {
