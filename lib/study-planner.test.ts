@@ -28,8 +28,6 @@ describe("generateSessions", () => {
   });
 
   it("returns an empty plan when there is not enough time before exam", () => {
-    expect(generateSessions(new Date("2026-05-27T00:00:00Z"), 2, [], "2026-05-26")).toEqual(
-      []
-    );
+    expect(generateSessions(new Date("2026-05-27T00:00:00Z"), 2, [], "2026-05-26")).toEqual([]);
   });
 });
