@@ -1,6 +1,6 @@
-import type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard } from "@prisma/client";
+import type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard, Quiz } from "@prisma/client";
 
-export type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard };
+export type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard, Quiz };
 
 export type Recurrence = "none" | "daily" | "weekly" | "monthly";
 

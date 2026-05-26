@@ -249,6 +249,49 @@ export async function extractTasksFromProse(
   return JSON.parse(responseText.replace(/```json|```/g, "").trim()) as ExtractedTask[];
 }
 
+// ─── Quiz generation ─────────────────────────────────────────────────────────
+
+export interface QuizQuestion {
+  question: string;
+  options: [string, string, string, string];
+  correct: number; // 0–3
+  explanation: string;
+}
+
+const QUIZ_SYSTEM = `Jesteś nauczycielem akademickim tworzącym pytania sprawdzające wiedzę.
+Generujesz pytania wielokrotnego wyboru (MCQ) z 4 opcjami na podstawie podanego tematu i egzaminu.
+
+Zasady:
+- Pytania muszą dotyczyć KONKRETNEJ wiedzy z tematu (fakty, definicje, zrozumienie)
+- Każda opcja powinna być realistyczna (żadnych oczywistych błędnych odpowiedzi)
+- Jedno pytanie = jedna wyraźna poprawna odpowiedź
+- explanation: 1-2 zdania dlaczego to jest poprawna odpowiedź
+- Pisz po polsku, zwięźle
+
+Odpowiedz WYŁĄCZNIE czystym JSON — tablicą bez markdown:
+[{"question":"...","options":["a","b","c","d"],"correct":0,"explanation":"..."}]`;
+
+export async function generateQuiz(
+  topic: string,
+  examTitle: string,
+  count = 5
+): Promise<QuizQuestion[]> {
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 2048,
+    system: [{ type: "text", text: QUIZ_SYSTEM, cache_control: { type: "ephemeral" } }],
+    messages: [
+      {
+        role: "user",
+        content: `Egzamin: ${examTitle}\nTemat sesji nauki: ${topic}\nLiczba pytań: ${count}\n\nWygeneruj ${count} pytań MCQ.`,
+      },
+    ],
+  });
+
+  const text = (msg.content[0] as { type: string; text: string }).text;
+  return JSON.parse(text.replace(/```json|```/g, "").trim()) as QuizQuestion[];
+}
+
 export async function parseTaskFromText(
   input: string,
   categories: { id: string; name: string }[],

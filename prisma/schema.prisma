@@ -152,6 +152,7 @@ model Exam {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   category      Category?      @relation(fields: [categoryId], references: [id])
   studySessions StudySession[]
+  quizzes       Quiz[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -164,7 +165,26 @@ model StudySession {
   hours         Float
   done          Boolean  @default(false)
   googleEventId String?
-  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  confidence    Int?     // 1–5 self-assessment after session
+  notes         String?  // "Co było najtrudniejsze?"
+  exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  quizzes       Quiz[]
+}
+
+model Quiz {
+  id        String        @id @default(cuid())
+  examId    String
+  sessionId String?
+  type      String        // "pre" | "post"
+  questions Json          // [{question, options:[4xstr], correct:0-3, explanation}]
+  answers   Json?         // [{questionIndex:int, answer:int}]
+  score     Int?          // number of correct answers
+  exam      Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
+  session   StudySession? @relation(fields: [sessionId], references: [id])
+  createdAt DateTime      @default(now())
+
+  @@index([examId])
+  @@index([sessionId])
 }
 
 model FlashcardDeck {
