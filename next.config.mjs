@@ -6,6 +6,9 @@ const nextConfig = {
     unoptimized: true,
   },
   turbopack: {},
+  // Prisma v7 uses WASM-based query compiler — bundlers (incl. Turbopack) strip
+  // the model delegates. Load Prisma and the pg adapter directly from node_modules.
+  serverExternalPackages: ["@prisma/client", "@prisma/adapter-pg", "pg"],
 };
 
 export default withPWA({

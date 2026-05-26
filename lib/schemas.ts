@@ -19,23 +19,6 @@ export const TaskCreateSchema = z.object({
   estimatedMinutes: z.number().int().positive().optional().nullable(),
 });
 
-export const HabitCreateSchema = z.object({
-  title: z.string().min(1, "Tytuł jest wymagany"),
-  description: z.string().optional(),
-  emoji: z.string().default("✅"),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#3b82f6"),
-  // daily | weekly:N (N=1..7) | custom:N (N=2..30 days)
-  frequency: z.string().regex(/^(daily|weekly:[1-7]|custom:\d+)$/, "Nieprawidłowa częstotliwość").default("daily"),
-});
-
-export const GoalCreateSchema = z.object({
-  title: z.string().min(1, "Tytuł jest wymagany"),
-  description: z.string().optional(),
-  emoji: z.string().default("🎯"),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#3b82f6"),
-  deadline: z.string().optional().nullable(),
-});
-
 export const TaskUpdateSchema = TaskCreateSchema.partial().extend({
   done: z.boolean().optional(),
   reminderSentAt: z.string().nullable().optional(),
