@@ -32,6 +32,7 @@ import { Lightbulb, Plus, MoreHorizontal, Trash2, Pencil, Sparkles, X, ChevronRi
 import { cn } from "@/lib/utils";
 import { formatNextInterval } from "@/lib/fsrs";
 import type { FlashcardDeckWithStats, Flashcard } from "@/types";
+import { toast } from "sonner";
 
 // ─── EMOJI PICKER ──────────────────────────────────────────────────────────────
 const EMOJIS = ["📚", "🧠", "🔬", "📐", "🌍", "🎵", "💻", "⚗️", "📜", "🗺️", "🏛️", "🌱"];
@@ -207,7 +208,13 @@ export default function FlashcardsPage() {
         setGenerateModal({ open: false });
         setGenerateTopics("");
         fetchDecks();
+        toast.success("Fiszki wygenerowane");
+      } else {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        toast.error(data?.error ?? "Nie udało się wygenerować fiszek");
       }
+    } catch {
+      toast.error("Błąd połączenia z AI");
     } finally {
       setGenerating(false);
     }
@@ -379,7 +386,7 @@ export default function FlashcardsPage() {
 
       {/* ── New / Edit Deck Modal ── */}
       <Dialog open={deckModal.open} onOpenChange={(o) => setDeckModal((s) => ({ ...s, open: o }))}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>{deckModal.editing ? "Edytuj talię" : "Nowa talia"}</DialogTitle>
           </DialogHeader>
@@ -439,7 +446,7 @@ export default function FlashcardsPage() {
 
       {/* ── Add Card Modal ── */}
       <Dialog open={cardModal.open} onOpenChange={(o) => setCardModal((s) => ({ ...s, open: o }))}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Dodaj kartę{cardModal.deckTitle ? ` — ${cardModal.deckTitle}` : ""}</DialogTitle>
           </DialogHeader>
@@ -475,7 +482,7 @@ export default function FlashcardsPage() {
 
       {/* ── AI Generate Modal ── */}
       <Dialog open={generateModal.open} onOpenChange={(o) => setGenerateModal((s) => ({ ...s, open: o }))}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />

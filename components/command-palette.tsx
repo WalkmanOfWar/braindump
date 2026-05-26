@@ -209,7 +209,7 @@ export function CommandPalette() {
     } finally {
       setCreating(false);
     }
-  }, [parsed, creating]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [parsed, creating]);
 
   // ── Derived lists ────────────────────────────────────────────────────────
 
