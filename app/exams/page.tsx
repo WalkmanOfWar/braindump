@@ -11,6 +11,7 @@ import { Plus, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import type { ExamWithSessions } from "@/types";
 import type { Category } from "@/types";
+import type { StudySession } from "@prisma/client";
 
 type FilterTab = "active" | "past";
 
@@ -59,6 +60,28 @@ export default function ExamsPage() {
         })
       );
     }
+  };
+
+  const handleSessionRated = (
+    examId: string,
+    sessionId: string,
+    confidence: number,
+    notes: string,
+    retrySession?: StudySession
+  ) => {
+    setExams((prev) =>
+      prev.map((exam) => {
+        if (exam.id !== examId) return exam;
+        const updatedSessions = exam.studySessions.map((s) =>
+          s.id === sessionId ? { ...s, confidence, notes } : s
+        );
+        // Append the auto-created retry session if present
+        const sessions = retrySession
+          ? [...updatedSessions, retrySession]
+          : updatedSessions;
+        return { ...exam, studySessions: sessions };
+      })
+    );
   };
 
   const handleSaveExam = (exam: ExamWithSessions) => {
@@ -133,6 +156,7 @@ export default function ExamsPage() {
                 onToggleSession={handleToggleSession}
                 onDelete={handleDeleteExam}
                 onEdit={handleEditExam}
+                onSessionRated={handleSessionRated}
               />
             ))}
           </div>
