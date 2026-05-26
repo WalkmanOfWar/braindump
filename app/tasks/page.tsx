@@ -34,7 +34,6 @@ import {
 import { KanbanView } from "@/components/kanban-view";
 import { MatrixView } from "@/components/matrix-view";
 import { toUiTask } from "@/lib/utils";
-import { useGoals } from "@/components/goals-provider";
 import type { TaskWithCategory, Category, UiTask } from "@/types";
 
 type FilterTab = "all" | "active" | "completed";
@@ -63,8 +62,6 @@ export default function TasksPage() {
   const [isError, setIsError] = useState(false);
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [goalFilter, setGoalFilter] = useState<string>("all");
-  const { goals } = useGoals();
   const [sortBy, setSortBy] = useState<SortOption>("deadline");
   const [searchQuery, setSearchQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -111,12 +108,6 @@ export default function TasksPage() {
     .filter((t) =>
       categoryFilter === "all" ? true : t.categoryId === categoryFilter
     )
-    .filter((t) => {
-      if (goalFilter === "all") return true;
-      const tGoalId = (t as TaskWithCategory & { goalId?: string | null }).goalId;
-      if (goalFilter === "none") return !tGoalId;
-      return tGoalId === goalFilter;
-    })
     .filter((t) => {
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
@@ -501,24 +492,6 @@ export default function TasksPage() {
                         style={{ backgroundColor: c.color }}
                       />
                       {c.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={goalFilter} onValueChange={setGoalFilter}>
-              <SelectTrigger className="w-full sm:w-[160px]">
-                <SelectValue placeholder="Cel" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Wszystkie cele</SelectItem>
-                <SelectItem value="none">Bez celu</SelectItem>
-                {goals.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    <div className="flex items-center gap-2">
-                      <span>{g.emoji}</span>
-                      <span className="truncate">{g.title}</span>
                     </div>
                   </SelectItem>
                 ))}

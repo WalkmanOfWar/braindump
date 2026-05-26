@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckSquare, GraduationCap, Repeat2, Target, ArrowRight, X, Sparkles } from "lucide-react";
+import { CheckSquare, GraduationCap, Lightbulb, ArrowRight, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,6 @@ interface StepProps {
 const STEPS = [
   { id: "welcome", title: "Witaj w Brain Dump!" },
   { id: "first-task", title: "Dodaj pierwsze zadanie" },
-  { id: "first-goal", title: "Wyznacz swój cel" },
   { id: "done", title: "Gotowe!" },
 ] as const;
 
@@ -33,8 +32,7 @@ function WelcomeStep({ onNext }: StepProps) {
   const features = [
     { icon: CheckSquare, color: "#3b82f6", label: "Zadania", desc: "Zarządzaj listą to-do z priorytetami" },
     { icon: GraduationCap, color: "#8b5cf6", label: "Egzaminy", desc: "Planuj naukę przed egzaminami" },
-    { icon: Repeat2, color: "#10b981", label: "Nawyki", desc: "Buduj dobre nawyki dzień po dniu" },
-    { icon: Target, color: "#f59e0b", label: "Cele", desc: "Wyznaczaj i śledź długoterminowe cele" },
+    { icon: Lightbulb, color: "#f59e0b", label: "Fiszki", desc: "Ucz się efektywnie z powtórkami SRS" },
   ];
 
   return (
@@ -129,85 +127,7 @@ function FirstTaskStep({ onNext, onSkip }: StepProps) {
   );
 }
 
-// ─── Step 3: First Goal ───────────────────────────────────────────────────────
-
-function FirstGoalStep({ onNext, onSkip }: StepProps) {
-  const [title, setTitle] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const suggestions = ["Zdać wszystkie egzaminy", "Nauczyć się nowego języka", "Skończyć projekt semestralny", "Regularnie ćwiczyć"];
-
-  const handleCreate = async (goalTitle: string) => {
-    if (!goalTitle.trim()) return;
-    setSaving(true);
-    const res = await fetch("/api/goals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: goalTitle.trim(), emoji: "🎯", color: "#3b82f6" }),
-    });
-    setSaving(false);
-    if (res.ok) {
-      toast.success(`Cel "${goalTitle}" dodany!`);
-      onNext();
-    } else {
-      toast.error("Nie udało się dodać celu");
-    }
-  };
-
-  return (
-    <div>
-      <div className="text-4xl text-center mb-4">🎯</div>
-      <h2 className="text-xl font-bold text-center mb-1">Wyznacz swój cel</h2>
-      <p className="text-sm text-muted-foreground text-center mb-6">
-        Cele pomagają skupić się na tym co naprawdę ważne.
-      </p>
-
-      <div className="space-y-2 mb-4">
-        {suggestions.map(s => (
-          <button
-            key={s}
-            onClick={() => setTitle(s)}
-            className={cn(
-              "w-full text-left px-3 py-2 rounded-lg border text-sm transition-colors",
-              title === s
-                ? "border-primary bg-primary/5 text-primary font-medium"
-                : "border-border hover:border-primary/40 text-foreground"
-            )}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-
-      <Input
-        placeholder="Lub wpisz własny cel…"
-        value={title}
-        onChange={e => setTitle(e.target.value)}
-        onKeyDown={e => { if (e.key === "Enter" && title.trim()) handleCreate(title); }}
-        className="mb-3"
-      />
-
-      <Button
-        onClick={() => handleCreate(title)}
-        disabled={!title.trim() || saving}
-        className="w-full gap-2"
-        size="lg"
-      >
-        {saving ? "Dodawanie…" : "Dodaj cel"}
-        <ArrowRight className="w-4 h-4" />
-      </Button>
-
-      <button
-        onClick={onSkip}
-        className="w-full mt-3 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
-      >
-        Pomiń ten krok
-      </button>
-    </div>
-  );
-}
-
-// ─── Step 4: Done ─────────────────────────────────────────────────────────────
+// ─── Step 3: Done ─────────────────────────────────────────────────────────────
 
 function DoneStep({ onNext }: StepProps) {
   return (
@@ -285,8 +205,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
         {/* Step content */}
         {step === 0 && <WelcomeStep {...stepProps} />}
         {step === 1 && <FirstTaskStep {...stepProps} />}
-        {step === 2 && <FirstGoalStep {...stepProps} />}
-        {step === 3 && <DoneStep {...stepProps} />}
+        {step === 2 && <DoneStep {...stepProps} />}
       </div>
     </div>
   );

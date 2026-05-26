@@ -25,20 +25,14 @@ export async function POST(req: NextRequest) {
   const MAX_INPUT = 8000;
   const truncated = text.length > MAX_INPUT ? text.slice(0, MAX_INPUT) : text;
 
-  const [categories, goals] = await Promise.all([
-    prisma.category.findMany({
-      where: { userId: session.user.id },
-      select: { id: true, name: true },
-    }),
-    prisma.goal.findMany({
-      where: { userId: session.user.id, archivedAt: null },
-      select: { id: true, title: true },
-    }),
-  ]);
+  const categories = await prisma.category.findMany({
+    where: { userId: session.user.id },
+    select: { id: true, name: true },
+  });
 
   try {
     const today = new Date().toLocaleDateString("sv-SE");
-    const extracted = await extractTasksFromProse(truncated, categories, goals, today);
+    const extracted = await extractTasksFromProse(truncated, categories, today);
     return NextResponse.json({ tasks: extracted });
   } catch (err) {
     console.error("[extract-tasks]", err);

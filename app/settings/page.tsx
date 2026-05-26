@@ -72,9 +72,9 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        const { imported } = data as { imported: { tasks: number; categories: number; goals: number; habits: number } };
+        const { imported } = data as { imported: { tasks: number; categories: number } };
         toast.success(
-          `Zaimportowano: ${imported.tasks} zadań, ${imported.categories} kategorii, ${imported.goals} celów, ${imported.habits} nawyków`
+          `Zaimportowano: ${imported.tasks} zadań, ${imported.categories} kategorii`
         );
       } else {
         toast.error(data.error ?? "Błąd importu");
@@ -162,7 +162,6 @@ export default function SettingsPage() {
             </div>
             <div className="text-xs text-muted-foreground border-t border-border pt-3 space-y-1">
               <p>• 08:00 — przypomnienia o terminach</p>
-              <p>• 21:00 — nieodhaczone nawyki</p>
               <p>• Niedziela 20:00 — tygodniowy przegląd</p>
             </div>
           </div>
@@ -223,7 +222,7 @@ export default function SettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Usunąć konto na zawsze?</AlertDialogTitle>
             <AlertDialogDescription>
-              Wszystkie Twoje zadania, egzaminy, nawyki, cele i notatki zostaną trwale usunięte.
+              Wszystkie Twoje zadania, egzaminy, fiszki i notatki zostaną trwale usunięte.
               Tej akcji nie można cofnąć. Pamiętaj o wcześniejszym eksporcie danych jeśli chcesz je zachować.
             </AlertDialogDescription>
           </AlertDialogHeader>
