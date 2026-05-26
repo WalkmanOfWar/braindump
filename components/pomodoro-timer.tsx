@@ -11,7 +11,8 @@ import React, {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Pause, Play, RotateCcw, Timer, X } from "lucide-react";
+import { Pause, Play, RotateCcw, Timer, X, Brain } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Types & constants
@@ -38,8 +39,10 @@ export function usePomodoroTimer() {
   return useContext(PomodoroContext);
 }
 
-const WORK_S = 25 * 60;
-const BREAK_S = 5 * 60;
+const POMODORO_WORK_S  = 25 * 60;
+const POMODORO_BREAK_S =  5 * 60;
+const DEEP_WORK_S      = 90 * 60;
+const DEEP_BREAK_S     = 20 * 60;
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -47,15 +50,30 @@ const BREAK_S = 5 * 60;
 
 export function PomodoroProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<PomodoroSession | null>(null);
+  const [deepWork, setDeepWork] = useState(false);
   const [phase, setPhase] = useState<Phase>("work");
-  const [seconds, setSeconds] = useState(WORK_S);
+  const [seconds, setSeconds] = useState(POMODORO_WORK_S);
   const [running, setRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const workDuration  = deepWork ? DEEP_WORK_S  : POMODORO_WORK_S;
+  const breakDuration = deepWork ? DEEP_BREAK_S : POMODORO_BREAK_S;
 
   const clearTimer = () => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
+    }
+  };
+
+  const sendBrowserNotification = (title: string, body: string) => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+      new Notification(title, { body, icon: "/icon-192.png" });
+    } else if (Notification.permission === "default") {
+      Notification.requestPermission().then((perm) => {
+        if (perm === "granted") new Notification(title, { body, icon: "/icon-192.png" });
+      });
     }
   };
 
@@ -69,17 +87,29 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
       setSeconds((s) => {
         if (s > 1) return s - 1;
 
-        // Interval finished — switch phase
         clearTimer();
         setRunning(false);
         setPhase((prev) => {
           const next: Phase = prev === "work" ? "break" : "work";
-          setSeconds(next === "work" ? WORK_S : BREAK_S);
-          toast.info(
-            next === "break"
-              ? "⏸ Zasłużona przerwa! 5 minut odpoczynku."
-              : "▶ Czas pracy! 25 minut skupienia."
-          );
+          const nextSeconds = next === "work" ? workDuration : breakDuration;
+          setSeconds(nextSeconds);
+
+          if (next === "break") {
+            const breakMins = breakDuration / 60;
+            const msg = deepWork
+              ? `🧠 Głęboka praca zakończona! ${breakMins} minut zasłużonej przerwy.`
+              : `⏸ Zasłużona przerwa! 5 minut odpoczynku.`;
+            toast.info(msg);
+            if (deepWork) {
+              sendBrowserNotification("⏰ Deep Work zakończony!", `Czas na ${breakMins} min przerwy. Wyjdź od biurka.`);
+            }
+          } else {
+            const workMins = workDuration / 60;
+            toast.info(deepWork
+              ? `▶ Czas głębokiej pracy! ${workMins} minut skupienia.`
+              : `▶ Czas pracy! 25 minut skupienia.`
+            );
+          }
           return next;
         });
         return 0;
@@ -87,14 +117,14 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     }, 1_000);
 
     return clearTimer;
-  }, [running]);
+  }, [running, deepWork, workDuration, breakDuration]);
 
   const start = useCallback((s: PomodoroSession) => {
     setSession(s);
     setPhase("work");
-    setSeconds(WORK_S);
+    setSeconds(deepWork ? DEEP_WORK_S : POMODORO_WORK_S);
     setRunning(true);
-  }, []);
+  }, [deepWork]);
 
   const close = () => {
     clearTimer();
@@ -105,11 +135,20 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
   const reset = () => {
     clearTimer();
     setPhase("work");
-    setSeconds(WORK_S);
+    setSeconds(deepWork ? DEEP_WORK_S : POMODORO_WORK_S);
     setRunning(false);
   };
 
-  const total = phase === "work" ? WORK_S : BREAK_S;
+  const toggleMode = () => {
+    const nextDeepWork = !deepWork;
+    setDeepWork(nextDeepWork);
+    clearTimer();
+    setPhase("work");
+    setSeconds(nextDeepWork ? DEEP_WORK_S : POMODORO_WORK_S);
+    setRunning(false);
+  };
+
+  const total = phase === "work" ? workDuration : breakDuration;
   const progress = ((total - seconds) / total) * 100;
   const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
   const ss = String(seconds % 60).padStart(2, "0");
@@ -146,10 +185,35 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
 
+          {/* Mode toggle */}
+          <div className="flex rounded-lg border border-border overflow-hidden text-xs font-medium">
+            <button
+              onClick={() => !deepWork || toggleMode()}
+              className={cn(
+                "flex-1 py-1.5 transition-colors",
+                !deepWork ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              🍅 25/5
+            </button>
+            <button
+              onClick={() => deepWork || toggleMode()}
+              className={cn(
+                "flex-1 py-1.5 transition-colors flex items-center justify-center gap-1",
+                deepWork ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              <Brain className="w-3 h-3" />
+              90/20
+            </button>
+          </div>
+
           {/* Clock */}
           <div className="text-center space-y-1">
             <p className="text-xs text-muted-foreground">
-              {phase === "work" ? "Czas pracy" : "Przerwa"}
+              {phase === "work"
+                ? deepWork ? "Głęboka praca" : "Czas pracy"
+                : deepWork ? "Przerwa aktywna" : "Przerwa"}
             </p>
             <p className="text-4xl font-mono font-bold text-foreground tabular-nums">
               {mm}:{ss}

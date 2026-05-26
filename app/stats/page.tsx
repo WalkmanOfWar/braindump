@@ -9,7 +9,7 @@ import {
   PieChart, Pie, Legend,
   LineChart, Line, CartesianGrid,
 } from "recharts";
-import { CheckCircle2, Flame, BookOpen, AlertTriangle, TrendingUp, Calendar, Clock, Download, AlertCircle, ListTodo, Sparkles, Loader2, RefreshCw } from "lucide-react";
+import { CheckCircle2, Flame, BookOpen, AlertTriangle, TrendingUp, Calendar, Clock, Download, AlertCircle, ListTodo, Sparkles, Loader2, RefreshCw, Lightbulb, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -39,7 +39,24 @@ type StatsData = {
   avgPerDay: number;
 };
 
+type FlashcardStats = {
+  retentionRate: number;
+  totalCards: number;
+  matureCount: number;
+  learningVelocity: { date: string; count: number }[];
+  deckStats: { id: string; title: string; emoji: string; color: string; total: number; mature: number; avgStability: number }[];
+};
+
+type ConfidenceStats = {
+  exams: {
+    id: string;
+    title: string;
+    topics: { topic: string; entries: { date: string; confidence: number }[] }[];
+  }[];
+};
+
 const PRIORITY_LABEL: Record<number, string> = { 1: "P1", 2: "P2", 3: "P3", 4: "P4", 5: "P5" };
+const CONFIDENCE_COLOR = ["", "bg-red-500", "bg-orange-500", "bg-yellow-500", "bg-lime-500", "bg-green-500"] as const;
 
 function StatCard({
   icon,
@@ -79,11 +96,20 @@ export default function StatsPage() {
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats | null>(null);
   const [weeklyReview, setWeeklyReview] = useState<string | null>(null);
   const [weeklyLoading, setWeeklyLoading] = useState(false);
+  const [flashcardStats, setFlashcardStats] = useState<FlashcardStats | null>(null);
+  const [confidenceStats, setConfidenceStats] = useState<ConfidenceStats | null>(null);
 
   useEffect(() => {
-    fetch("/api/stats")
-      .then((r) => r.json())
-      .then((d) => { setData(d); setLoading(false); });
+    Promise.all([
+      fetch("/api/stats").then((r) => r.json()),
+      fetch("/api/stats/flashcards").then((r) => r.ok ? r.json() : null),
+      fetch("/api/stats/confidence").then((r) => r.ok ? r.json() : null),
+    ]).then(([statsData, fcData, confData]) => {
+      setData(statsData);
+      setFlashcardStats(fcData);
+      setConfidenceStats(confData);
+      setLoading(false);
+    });
   }, []);
 
   const weekLabel = (() => {
@@ -423,6 +449,143 @@ export default function StatsPage() {
               </div>
             )}
           </>
+        )}
+
+        {/* ── Fiszki — analityka ── */}
+        {flashcardStats && flashcardStats.totalCards > 0 && (
+          <div className="border-t border-border pt-8 space-y-4">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <Lightbulb className="h-5 w-5 text-primary" />
+              Fiszki — analityka
+            </h2>
+
+            {/* KPI row */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <StatCard
+                icon={<CheckCircle2 className="h-5 w-5" />}
+                iconClass="bg-green-500/15 text-green-600"
+                label="Retencja (30 dni)"
+                value={`${flashcardStats.retentionRate}%`}
+                sub="ocen Good lub Easy"
+              />
+              <StatCard
+                icon={<Lightbulb className="h-5 w-5" />}
+                iconClass="bg-accent/15 text-accent"
+                label="Dojrzałe karty"
+                value={flashcardStats.matureCount}
+                sub={`z ${flashcardStats.totalCards} łącznie`}
+              />
+            </div>
+
+            {/* Velocity chart */}
+            <div className="bg-card border border-border rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Aktywność powtórek — ostatnie 14 dni</h3>
+              <ResponsiveContainer width="100%" height={140}>
+                <BarChart data={flashcardStats.learningVelocity} barSize={14}>
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(d: string) => { const dt = new Date(d); return `${dt.getDate()}.${dt.getMonth() + 1}`; }}
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                    interval={1}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis hide allowDecimals={false} />
+                  <Tooltip
+                    formatter={(v: number) => [`${v} powtórek`, ""]}
+                    labelFormatter={(d: string) => { const dt = new Date(d); return `${dt.getDate()}.${dt.getMonth() + 1}`; }}
+                    contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                  />
+                  <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Deck table */}
+            {flashcardStats.deckStats.length > 0 && (
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-border">
+                  <h3 className="text-sm font-semibold text-foreground">Talie</h3>
+                </div>
+                <div className="divide-y divide-border">
+                  {flashcardStats.deckStats.map((deck) => {
+                    const pct = deck.total > 0 ? Math.round((deck.mature / deck.total) * 100) : 0;
+                    return (
+                      <div key={deck.id} className="px-4 py-3 flex items-center gap-3">
+                        <span className="text-base">{deck.emoji}</span>
+                        <span className="text-sm flex-1 text-foreground truncate">{deck.title}</span>
+                        <div className="w-20 bg-muted rounded-full h-1.5 overflow-hidden shrink-0">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${pct}%`, backgroundColor: deck.color }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground w-24 text-right shrink-0">
+                          {deck.mature}/{deck.total} doj. · ∅{deck.avgStability}d
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Pewność per egzamin ── */}
+        {confidenceStats && confidenceStats.exams.length > 0 && (
+          <div className="border-t border-border pt-8 space-y-4">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <BarChart2 className="h-5 w-5 text-primary" />
+              Mapa pewności — egzaminy
+            </h2>
+
+            <div className="space-y-4">
+              {confidenceStats.exams.map((exam) => (
+                <div key={exam.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-border">
+                    <h3 className="text-sm font-semibold text-foreground">{exam.title}</h3>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {exam.topics.map(({ topic, entries }) => {
+                      const avg = entries.reduce((s, e) => s + e.confidence, 0) / entries.length;
+                      return (
+                        <div key={topic} className="px-4 py-2.5 flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground w-28 shrink-0 truncate">{topic}</span>
+                          <div className="flex gap-1 flex-1 min-w-0 flex-wrap">
+                            {entries.map((entry, i) => (
+                              <span
+                                key={i}
+                                title={`${entry.date}: ${entry.confidence}/5`}
+                                className={cn("inline-block w-4 h-4 rounded-sm shrink-0", CONFIDENCE_COLOR[entry.confidence])}
+                              />
+                            ))}
+                          </div>
+                          <span className={cn(
+                            "text-xs font-medium shrink-0 w-10 text-right",
+                            avg <= 2 ? "text-red-500" : avg < 4 ? "text-yellow-600 dark:text-yellow-400" : "text-green-600 dark:text-green-400"
+                          )}>
+                            ∅{Math.round(avg * 10) / 10}/5
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {/* Legend */}
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span>Skala pewności:</span>
+                {[1, 2, 3, 4, 5].map((v) => (
+                  <span key={v} className="flex items-center gap-1">
+                    <span className={cn("inline-block w-3 h-3 rounded-sm", CONFIDENCE_COLOR[v])} />
+                    {v}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── Przegląd tygodnia ── */}
