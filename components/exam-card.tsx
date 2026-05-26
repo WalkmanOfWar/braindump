@@ -39,6 +39,7 @@ import type { StudySession } from "@prisma/client";
 import { usePomodoroTimer } from "@/components/pomodoro-timer";
 import { SessionRatingModal } from "@/components/session-rating-modal";
 import { QuizModal } from "@/components/quiz-modal";
+import { SessionPrepModal } from "@/components/session-prep-modal";
 import { toast } from "sonner";
 
 // ─── Confidence helpers ───────────────────────────────────────────────────────
@@ -150,6 +151,9 @@ export function ExamCard({
     topic: string;
     type: "pre" | "post";
   } | null>(null);
+
+  // Session prep modal state (active recall + AI prompts before Pomodoro)
+  const [prepSession, setPrepSession] = useState<{ topic: string } | null>(null);
 
   const daysUntil = getDaysUntil(new Date(exam.examDate));
   const todayStr = getTodayStr();
@@ -326,13 +330,13 @@ export function ExamCard({
                       </Button>
                     )}
 
-                    {/* Pomodoro button — today's pending sessions */}
+                    {/* Pomodoro button — today's pending sessions (opens session prep first) */}
                     {sessionIsToday && !session.done && (
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-6 w-6 p-0 shrink-0 text-primary hover:text-primary"
-                        onClick={() => startPomodoro({ examTitle: exam.title, topic: session.topic })}
+                        onClick={() => setPrepSession({ topic: session.topic })}
                         aria-label="Rozpocznij Pomodoro"
                       >
                         <Play className="w-3.5 h-3.5" />
@@ -399,6 +403,20 @@ export function ExamCard({
           setRatingSession(null);
         }}
       />
+
+      {/* Session prep modal (active recall + AI prompts before Pomodoro) */}
+      {prepSession && (
+        <SessionPrepModal
+          open={!!prepSession}
+          onOpenChange={(v) => { if (!v) setPrepSession(null); }}
+          topic={prepSession.topic}
+          examTitle={exam.title}
+          onStart={() => {
+            startPomodoro({ examTitle: exam.title, topic: prepSession.topic });
+            setPrepSession(null);
+          }}
+        />
+      )}
 
       {/* Quiz modal */}
       {quizState && (

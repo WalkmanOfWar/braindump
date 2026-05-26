@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { MoreHorizontal, Pencil, Trash2, CalendarPlus, CalendarX2, Loader2, AlertTriangle, Repeat } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, CalendarPlus, CalendarX2, Loader2, AlertTriangle, Repeat, Zap, MapPin } from 'lucide-react'
 import type { UiTask } from '@/types'
 import { getUrgencyLevel, getUrgencyColor, formatDate } from '@/lib/utils'
 interface CategoryInfo {
@@ -223,7 +223,23 @@ export function TaskCard({
             </span>
           )}
 
+          {/* 2-minute rule badge */}
+          {task.estimatedMinutes != null && task.estimatedMinutes <= 2 && (
+            <span className="inline-flex items-center gap-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded px-1.5 py-0.5">
+              <Zap className="w-3 h-3" />
+              2 min
+            </span>
+          )}
+
         </div>
+
+        {/* Implementation intention */}
+        {(task.intentionWhen || task.intentionWhere) && (
+          <p className="mt-1.5 text-xs text-muted-foreground flex items-center gap-1">
+            <MapPin className="w-3 h-3 shrink-0" />
+            {[task.intentionWhen, task.intentionWhere].filter(Boolean).join(' · ')}
+          </p>
+        )}
 
         {/* Subtask progress */}
         {task.subtasks && task.subtasks.length > 0 && (

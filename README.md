@@ -52,19 +52,19 @@ Brain Dump to aplikacja webowa/PWA do zarządzania zadaniami, nauką i powtórka
 
 ## Stos technologiczny
 
-| Warstwa | Technologia |
-|---|---|
-| Framework | Next.js 16 App Router |
-| Język | TypeScript |
-| UI | Tailwind CSS + shadcn/ui + Radix |
-| Baza danych | PostgreSQL + Prisma ORM 7 |
-| Auth | NextAuth.js v4, Google OAuth, credentials |
-| AI | Anthropic Claude API (`claude-sonnet-4-6`) |
-| Kalendarz | Google Calendar API |
-| PWA | `@ducanh2912/next-pwa` |
-| Push | Web Push API + VAPID |
-| Email | Nodemailer SMTP |
-| Hosting | Vercel + Supabase |
+| Warstwa     | Technologia                                |
+| ----------- | ------------------------------------------ |
+| Framework   | Next.js 16 App Router                      |
+| Język       | TypeScript                                 |
+| UI          | Tailwind CSS + shadcn/ui + Radix           |
+| Baza danych | PostgreSQL + Prisma ORM 7                  |
+| Auth        | NextAuth.js v4, Google OAuth, credentials  |
+| AI          | Anthropic Claude API (`claude-sonnet-4-6`) |
+| Kalendarz   | Google Calendar API                        |
+| PWA         | `@ducanh2912/next-pwa`                     |
+| Push        | Web Push API + VAPID                       |
+| Email       | Nodemailer SMTP                            |
+| Hosting     | Vercel + Supabase                          |
 
 ---
 
@@ -82,8 +82,17 @@ Otwórz [http://localhost:3000](http://localhost:3000).
 Do szybkiego sprawdzenia jakości:
 
 ```bash
-npx tsc --noEmit
+npm run check
+```
+
+Pojedyncze komendy:
+
+```bash
 npm run lint
+npm run typecheck
+npm run test
+npm run coverage
+npm run format:check
 ```
 
 `npm run build` wymaga kompletu zmiennych środowiskowych używanych przez route'y budowane po stronie serwera. W szczególności cron-y push wymagają VAPID.
@@ -202,12 +211,12 @@ lib/
 
 `vercel.json` definiuje:
 
-| Ścieżka | Harmonogram | Cel |
-|---|---:|---|
-| `/api/cron/reminders` | `0 8 * * *` | przypomnienia o deadline'ach |
-| `/api/cron/habit-reminders` | `0 19 * * *` | wpis historyczny w configu; route obecnie nie istnieje |
-| `/api/cron/weekly-review-nudge` | `0 18 * * 0` | zachęta do przeglądu tygodnia |
-| `/api/cron/sleep-consolidation` | `30 21 * * *` | wieczorna konsolidacja materiału |
+| Ścieżka                         |   Harmonogram | Cel                                                    |
+| ------------------------------- | ------------: | ------------------------------------------------------ |
+| `/api/cron/reminders`           |   `0 8 * * *` | przypomnienia o deadline'ach                           |
+| `/api/cron/habit-reminders`     |  `0 19 * * *` | wpis historyczny w configu; route obecnie nie istnieje |
+| `/api/cron/weekly-review-nudge` |  `0 18 * * 0` | zachęta do przeglądu tygodnia                          |
+| `/api/cron/sleep-consolidation` | `30 21 * * *` | wieczorna konsolidacja materiału                       |
 
 Przed deployem warto usunąć albo przywrócić `/api/cron/habit-reminders`, żeby konfiguracja Vercel nie wskazywała nieistniejącego endpointu.
 
@@ -220,7 +229,7 @@ GitHub Actions uruchamia workflow `Type-check & Lint` dla PR-ów do `main`, push
 Pipeline:
 
 ```text
-npm install -> npx prisma generate -> npx tsc --noEmit -> npm run lint
+npm install -> npx prisma generate -> npm run check
 ```
 
 ---
@@ -231,4 +240,5 @@ npm install -> npx prisma generate -> npx tsc --noEmit -> npm run lint
 - API routes sprawdzają sesję przez NextAuth.
 - Brak `ANTHROPIC_API_KEY` powinien skutkować kontrolowanym błędem `503` w endpointach AI.
 - Kalendarz używa drag & drop z krokiem 30 minut w widoku blokowym.
-- `npm run lint` i `npx tsc --noEmit` przechodzą bez błędów.
+- `npm run check` uruchamia lint, type-check i testy Vitest.
+- Prettier jest dodany jako narzędzie lokalne (`npm run format`). `npm run format:check` obejmuje obecnie konfigurację i testy; pełny baseline formatowania warto zrobić osobnym PR-em.

@@ -83,7 +83,9 @@ model Task {
   recurrence       String    @default("none") // none | daily | weekly | monthly
   recurrenceEnd    DateTime?
   subtasks         Json?     // [{id,text,done}]
-  estimatedMinutes Int?      // e.g. 15, 30, 60, 120
+  estimatedMinutes Int?      // e.g. 2, 15, 30, 60, 120
+  intentionWhen    String?   // implementation intention — "kiedy" (Gollwitzer 1999)
+  intentionWhere   String?   // implementation intention — "gdzie"
   userId           String
   categoryId       String?
   goalId           String?

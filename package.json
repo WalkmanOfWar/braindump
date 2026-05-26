@@ -6,7 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint --ext .ts,.tsx ."
+    "lint": "eslint --ext .ts,.tsx .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "format": "prettier --write .",
+    "format:check": "prettier --check --ignore-unknown .github/workflows/ci.yml README.md package.json prettier.config.mjs vitest.config.ts \"lib/**/*.test.ts\"",
+    "check": "npm run lint && npm run typecheck && npm run test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",
@@ -85,13 +92,20 @@
     "@types/web-push": "^3.6.4",
     "@typescript-eslint/eslint-plugin": "^8.59.4",
     "@typescript-eslint/parser": "^8.60.0",
+    "@vitest/coverage-v8": "^4.1.7",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.6",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.6.0",
-    "postcss": "^8.5",
+    "postcss": ">=8.5.10",
+    "prettier": "^3.8.3",
     "tailwindcss": "^4.2.0",
     "tw-animate-css": "1.3.3",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "^4.1.7"
+  },
+  "overrides": {
+    "postcss": ">=8.5.10",
+    "serialize-javascript": ">=7.0.5"
   }
 }
