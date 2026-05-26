@@ -80,7 +80,6 @@ function ConfidenceChart({ sessions }: { sessions: StudySession[] }) {
         {Array.from(byTopic.entries()).map(([topic, vals]) => {
           const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
           const avgRounded = Math.round(avg * 10) / 10;
-          const barColor = avg <= 2 ? "bg-red-500" : avg < 4 ? "bg-yellow-500" : "bg-green-500";
           return (
             <div key={topic} className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground truncate w-32 shrink-0">{topic}</span>
