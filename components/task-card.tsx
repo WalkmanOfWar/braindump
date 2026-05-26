@@ -24,24 +24,15 @@ import {
 import { MoreHorizontal, Pencil, Trash2, CalendarPlus, CalendarX2, Loader2, AlertTriangle, Repeat } from 'lucide-react'
 import type { UiTask } from '@/types'
 import { getUrgencyLevel, getUrgencyColor, formatDate } from '@/lib/utils'
-import { useGoals } from '@/components/goals-provider'
-
 interface CategoryInfo {
   name: string
   color: string
-}
-
-interface GoalInfo {
-  emoji: string
-  color: string
-  title: string
 }
 
 interface TaskCardProps {
   task: UiTask
   variant?: 'default' | 'highlighted'
   categoryOverride?: CategoryInfo | null
-  goalInfo?: GoalInfo | null
   onToggleComplete?: (id: string, completed: boolean) => void
   onEdit?: (task: UiTask) => void
   onDelete?: (id: string) => void
@@ -55,7 +46,6 @@ export function TaskCard({
   task,
   variant = 'default',
   categoryOverride,
-  goalInfo,
   onToggleComplete,
   onEdit,
   onDelete,
@@ -68,8 +58,6 @@ export function TaskCard({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const category = categoryOverride ?? null
-  const { getGoalInfo } = useGoals()
-  const effectiveGoalInfo = goalInfo ?? getGoalInfo(task.goalId)
   const urgencyLevel = getUrgencyLevel(task.deadline)
   const urgencyColor = getUrgencyColor(urgencyLevel)
   const isOverdue = !isCompleted && task.deadline < new Date()
@@ -235,20 +223,6 @@ export function TaskCard({
             </span>
           )}
 
-          {/* Goal badge */}
-          {effectiveGoalInfo && (
-            <span
-              className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-2 py-0.5"
-              style={{
-                backgroundColor: isHighlighted ? 'rgba(255,255,255,0.2)' : `${effectiveGoalInfo.color}18`,
-                color: isHighlighted ? 'white' : effectiveGoalInfo.color,
-              }}
-              title={`Cel: ${effectiveGoalInfo.title}`}
-            >
-              <span>{effectiveGoalInfo.emoji}</span>
-              <span className="truncate max-w-[100px]">{effectiveGoalInfo.title}</span>
-            </span>
-          )}
         </div>
 
         {/* Subtask progress */}

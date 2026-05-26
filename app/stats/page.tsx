@@ -9,9 +9,18 @@ import {
   PieChart, Pie, Legend,
   LineChart, Line, CartesianGrid,
 } from "recharts";
-import { CheckCircle2, Flame, BookOpen, AlertTriangle, TrendingUp, Calendar, Clock, Download } from "lucide-react";
+import { CheckCircle2, Flame, BookOpen, AlertTriangle, TrendingUp, Calendar, Clock, Download, AlertCircle, ListTodo, Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+type WeeklyStats = {
+  completed: number;
+  missed: number;
+  sessions: number;
+  studyHours: number;
+  active: number;
+};
 
 type StatsData = {
   totalTasks: number;
@@ -67,12 +76,42 @@ function formatDate(iso: string) {
 export default function StatsPage() {
   const [data, setData] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [weeklyStats, setWeeklyStats] = useState<WeeklyStats | null>(null);
+  const [weeklyReview, setWeeklyReview] = useState<string | null>(null);
+  const [weeklyLoading, setWeeklyLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/stats")
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); });
   }, []);
+
+  const weekLabel = (() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 7);
+    const fmt = (d: Date) => d.toLocaleDateString("pl-PL", { day: "numeric", month: "long" });
+    return `${fmt(start)} – ${fmt(end)}`;
+  })();
+
+  const handleWeeklyReview = async () => {
+    setWeeklyLoading(true);
+    try {
+      const res = await fetch("/api/ai/weekly-review", { method: "POST" });
+      const json = await res.json();
+      if (res.status === 503) {
+        toast.error("Brak klucza ANTHROPIC_API_KEY");
+        return;
+      }
+      if (!res.ok) { toast.error(json.error ?? "Błąd generowania przeglądu"); return; }
+      setWeeklyStats(json.stats);
+      setWeeklyReview(json.review);
+    } catch {
+      toast.error("Błąd połączenia — spróbuj ponownie");
+    } finally {
+      setWeeklyLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-8">
@@ -385,6 +424,109 @@ export default function StatsPage() {
             )}
           </>
         )}
+
+        {/* ── Przegląd tygodnia ── */}
+        <div className="border-t border-border pt-8 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Przegląd tygodnia
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">{weekLabel}</p>
+            </div>
+            <Button onClick={handleWeeklyReview} disabled={weeklyLoading} size="sm">
+              {weeklyLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : weeklyReview ? (
+                <><RefreshCw className="h-4 w-4 mr-1.5" />Odśwież</>
+              ) : (
+                <><Sparkles className="h-4 w-4 mr-1.5" />Generuj AI</>
+              )}
+            </Button>
+          </div>
+
+          {weeklyLoading && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+            </div>
+          )}
+
+          {!weeklyLoading && weeklyStats && (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <StatCard
+                  icon={<CheckCircle2 className="h-5 w-5" />}
+                  iconClass="bg-urgency-low/15 text-urgency-low"
+                  label="Ukończone"
+                  value={weeklyStats.completed}
+                  sub="zadań w tym tygodniu"
+                />
+                <StatCard
+                  icon={<AlertCircle className="h-5 w-5" />}
+                  iconClass={weeklyStats.missed > 0 ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"}
+                  label="Zaległe"
+                  value={weeklyStats.missed}
+                  sub="nieukończonych"
+                />
+                <StatCard
+                  icon={<BookOpen className="h-5 w-5" />}
+                  iconClass="bg-accent/15 text-accent"
+                  label="Sesje nauki"
+                  value={weeklyStats.sessions}
+                  sub="ukończonych"
+                />
+                <StatCard
+                  icon={<Clock className="h-5 w-5" />}
+                  iconClass="bg-primary/15 text-primary"
+                  label="Godziny nauki"
+                  value={`${weeklyStats.studyHours}h`}
+                  sub="łącznie"
+                />
+                <StatCard
+                  icon={<ListTodo className="h-5 w-5" />}
+                  iconClass="bg-muted text-muted-foreground"
+                  label="Aktywne"
+                  value={weeklyStats.active}
+                  sub="zadań do zrobienia"
+                />
+              </div>
+
+              {weeklyStats.completed + weeklyStats.missed > 0 && (
+                <div className="bg-card border border-border rounded-xl p-4">
+                  <div className="flex justify-between text-xs text-muted-foreground mb-2">
+                    <span>Skuteczność tygodnia</span>
+                    <span className="font-medium text-foreground">
+                      {Math.round((weeklyStats.completed / (weeklyStats.completed + weeklyStats.missed)) * 100)}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-urgency-low rounded-full transition-all"
+                      style={{ width: `${Math.round((weeklyStats.completed / (weeklyStats.completed + weeklyStats.missed)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {!weeklyLoading && weeklyReview && (
+            <div className="rounded-xl border border-primary/25 bg-primary/5 p-5 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                <Sparkles className="w-4 h-4" />
+                Analiza AI
+              </div>
+              <p className="text-sm text-foreground leading-relaxed">{weeklyReview}</p>
+            </div>
+          )}
+
+          {!weeklyLoading && !weeklyStats && (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              Kliknij „Generuj AI" aby zobaczyć podsumowanie i analizę ostatniego tygodnia.
+            </p>
+          )}
+        </div>
       </main>
 
       <BottomNav />

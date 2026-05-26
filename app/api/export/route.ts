@@ -9,12 +9,10 @@ export async function GET() {
 
   const userId = session.user.id;
 
-  const [tasks, exams, categories, habits, goals] = await Promise.all([
+  const [tasks, exams, categories] = await Promise.all([
     prisma.task.findMany({ where: { userId } }),
     prisma.exam.findMany({ where: { userId }, include: { studySessions: true } }),
     prisma.category.findMany({ where: { userId } }),
-    prisma.habit.findMany({ where: { userId }, include: { completions: true } }),
-    prisma.goal.findMany({ where: { userId }, include: { tasks: { select: { id: true } } } }),
   ]);
 
   const data = {
@@ -27,15 +25,11 @@ export async function GET() {
     tasks,
     exams,
     categories,
-    habits,
-    goals,
     meta: {
       counts: {
         tasks: tasks.length,
         exams: exams.length,
         categories: categories.length,
-        habits: habits.length,
-        goals: goals.length,
       },
     },
   };

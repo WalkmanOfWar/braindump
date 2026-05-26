@@ -1,18 +1,6 @@
-import type { Task, Exam, StudySession, Category, Habit, HabitCompletion, Goal, FlashcardDeck, Flashcard } from "@prisma/client";
+import type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard } from "@prisma/client";
 
-export type { Task, Exam, StudySession, Category, Habit, HabitCompletion, Goal, FlashcardDeck, Flashcard };
-
-export type HabitWithCompletions = Habit & { completions: HabitCompletion[] };
-
-export type GoalWithTasks = Goal & { tasks: Task[] };
-
-export type GoalCreateInput = {
-  title: string;
-  description?: string;
-  emoji?: string;
-  color?: string;
-  deadline?: string;
-};
+export type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard };
 
 export type Recurrence = "none" | "daily" | "weekly" | "monthly";
 

@@ -206,11 +206,10 @@ Dla każdego zadania:
   • 2: "kiedyś", "jak będziesz miał czas"
   • 1: "ewentualnie", "może", luźne sugestie
 - categoryId: id pasującej kategorii z listy lub null
-- goalId: id pasującego celu z listy lub null
 - suggestedCategoryName: nazwa nowej kategorii jeśli żadna nie pasuje, null w przeciwnym razie
 
 Zwróć WYŁĄCZNIE czystą tablicę JSON bez markdown, bez tekstu wstępnego, bez komentarzy:
-[{"title":"...","description":null,"deadline":null,"priority":3,"categoryId":null,"goalId":null,"suggestedCategoryName":null}]`;
+[{"title":"...","description":null,"deadline":null,"priority":3,"categoryId":null,"suggestedCategoryName":null}]`;
 
 export interface ExtractedTask {
   title: string;
@@ -218,18 +217,15 @@ export interface ExtractedTask {
   deadline: string | null;
   priority: number;
   categoryId: string | null;
-  goalId: string | null;
   suggestedCategoryName: string | null;
 }
 
 export async function extractTasksFromProse(
   text: string,
   categories: { id: string; name: string }[],
-  goals: { id: string; title: string }[],
   today: string
 ): Promise<ExtractedTask[]> {
   const catsJson = categories.length > 0 ? JSON.stringify(categories.map((c) => ({ id: c.id, name: c.name }))) : "[]";
-  const goalsJson = goals.length > 0 ? JSON.stringify(goals.map((g) => ({ id: g.id, title: g.title }))) : "[]";
 
   const msg = await client.messages.create({
     model: "claude-sonnet-4-6",
@@ -244,7 +240,7 @@ export async function extractTasksFromProse(
     messages: [
       {
         role: "user",
-        content: `Dzisiaj jest: ${today}\nDostępne kategorie: ${catsJson}\nDostępne cele: ${goalsJson}\n\nTekst:\n${text}`,
+        content: `Dzisiaj jest: ${today}\nDostępne kategorie: ${catsJson}\n\nTekst:\n${text}`,
       },
     ],
   });
