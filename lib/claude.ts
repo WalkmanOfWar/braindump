@@ -292,6 +292,34 @@ export async function generateQuiz(
   return JSON.parse(text.replace(/```json|```/g, "").trim()) as QuizQuestion[];
 }
 
+// ─── Feynman reflection evaluation ──────────────────────────────────────────
+
+const REFLECTION_SYSTEM = `Jesteś tutorem akademickim oceniającym wyjaśnienie tematu techniką Feynmana.
+Uczeń właśnie ukończył sesję nauki i wyjaśnia temat własnymi słowami.
+
+Twoja odpowiedź powinna:
+1. Podkreślić co zostało dobrze wyjaśnione (1-2 zdania)
+2. Wskazać konkretne luki lub błędy w rozumieniu (jeśli są)
+3. Zaproponować jedno konkretne zagadnienie do pogłębienia
+
+Styl: bezpośredni, konstruktywny, motywujący. Pisz po polsku, do drugiej osoby.
+Długość: 3-5 zdań. Odpowiedz WYŁĄCZNIE tekstem — bez markdown, bez list.`;
+
+export async function evaluateReflection(topic: string, reflection: string): Promise<string> {
+  const msg = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 512,
+    system: [{ type: "text", text: REFLECTION_SYSTEM, cache_control: { type: "ephemeral" } }],
+    messages: [
+      {
+        role: "user",
+        content: `Temat sesji: ${topic}\n\nWyjaśnienie ucznia:\n${reflection}`,
+      },
+    ],
+  });
+  return (msg.content[0] as { type: string; text: string }).text.trim();
+}
+
 export async function parseTaskFromText(
   input: string,
   categories: { id: string; name: string }[],

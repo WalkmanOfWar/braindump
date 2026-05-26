@@ -7,18 +7,32 @@ function toLocalDateStr(d: Date): string {
 }
 
 /**
+ * Assigns a topic for session day `i` out of `total` days.
+ * - Block mode (default): groups consecutive days per topic (A→A→B→B→C→C)
+ * - Interleaved mode: cycles through topics each day (A→B→C→A→B→C)
+ */
+function assignTopic(i: number, total: number, topics: string[], interleaved: boolean): string {
+  if (topics.length === 0) return `Powtórka materiału — dzień ${i + 1}`;
+  if (interleaved) return topics[i % topics.length];
+  const blockSize = Math.ceil(total / topics.length);
+  return topics[Math.min(Math.floor(i / blockSize), topics.length - 1)];
+}
+
+/**
  * Generates study sessions from today until 2 days before the exam.
  * @param examDate      - exam date (stored as UTC midnight, keep as-is)
  * @param dailyHours    - hours per session
- * @param topics        - list of topics cycled across days
+ * @param topics        - list of topics distributed across days
  * @param todayStr      - today's date as "YYYY-MM-DD" in the user's local timezone
  *                        (sent from the client to avoid server UTC offset issues)
+ * @param interleaved   - if true, cycle topics (A→B→C→A); otherwise block per topic (A→A→B→B)
  */
 export function generateSessions(
   examDate: Date,
   dailyHours: number,
   topics: string[] = [],
-  todayStr?: string
+  todayStr?: string,
+  interleaved = false
 ): { date: string; topic: string; hours: number }[] {
   // Use client-supplied date to avoid UTC vs local midnight mismatch.
   const today = todayStr
@@ -42,7 +56,7 @@ export function generateSessions(
     date.setDate(date.getDate() + i);
     return {
       date: toLocalDateStr(date),
-      topic: topics[i % topics.length] ?? `Powtórka materiału — dzień ${i + 1}`,
+      topic: assignTopic(i, daysToSchedule, topics, interleaved),
       hours: dailyHours,
     };
   });

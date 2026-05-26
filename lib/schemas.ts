@@ -30,6 +30,7 @@ export const ExamCreateSchema = z.object({
   dailyHours: z.number().positive().default(1),
   topics: z.array(z.string()).default([]),
   categoryId: z.string().optional().nullable(),
+  interleaved: z.boolean().default(false),
   today: z.string().optional(), // client's local date "YYYY-MM-DD" — prevents UTC offset bugs
 });
 

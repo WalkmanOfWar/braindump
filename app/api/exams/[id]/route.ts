@@ -10,6 +10,7 @@ const ExamUpdateSchema = z.object({
   examDate: z.string().optional(),
   dailyHours: z.number().positive().optional(),
   categoryId: z.string().nullable().optional(),
+  interleaved: z.boolean().optional(),
   regenerate: z.boolean().optional(), // if true, delete old sessions and regenerate
   today: z.string().optional(),       // client's local date for session generation
   topics: z.array(z.string()).optional(),
@@ -39,7 +40,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Nieprawidłowe dane" }, { status: 400 });
   }
 
-  const { title, examDate, dailyHours, categoryId, regenerate, today, topics } = parsed.data;
+  const { title, examDate, dailyHours, categoryId, interleaved, regenerate, today, topics } = parsed.data;
 
   const updatedExam = await prisma.exam.update({
     where: { id },
@@ -48,6 +49,7 @@ export async function PATCH(
       ...(examDate !== undefined && { examDate: new Date(examDate) }),
       ...(dailyHours !== undefined && { dailyHours }),
       ...(categoryId !== undefined && { categoryId }),
+      ...(interleaved !== undefined && { interleaved }),
     },
   });
 
@@ -56,7 +58,8 @@ export async function PATCH(
 
     const newExamDate = examDate ? new Date(examDate) : exam.examDate;
     const newDailyHours = dailyHours ?? exam.dailyHours;
-    const sessions = generateSessions(newExamDate, newDailyHours, topics ?? [], today);
+    const newInterleaved = interleaved ?? updatedExam.interleaved;
+    const sessions = generateSessions(newExamDate, newDailyHours, topics ?? [], today, newInterleaved);
 
     await prisma.studySession.createMany({
       data: sessions.map((s) => ({

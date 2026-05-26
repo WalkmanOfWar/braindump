@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/weekly-review-nudge",
       "schedule": "0 18 * * 0"
+    },
+    {
+      "path": "/api/cron/sleep-consolidation",
+      "schedule": "30 21 * * *"
     }
   ]
 }

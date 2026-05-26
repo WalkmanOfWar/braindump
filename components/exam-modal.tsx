@@ -62,6 +62,7 @@ export function ExamModal({
   const [hoursPerDay, setHoursPerDay] = useState("1");
   const [categoryId, setCategoryId] = useState("");
   const [topics, setTopics] = useState("");
+  const [interleaved, setInterleaved] = useState(false);
   const [regenerate, setRegenerate] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
@@ -81,6 +82,7 @@ export function ExamModal({
       // rebuild topics from existing sessions (unique, in order)
       const uniqueTopics = [...new Set(exam.studySessions.map((s) => s.topic))];
       setTopics(uniqueTopics.join("\n"));
+      setInterleaved(exam.interleaved ?? false);
       setRegenerate(false);
     } else if (!open) {
       setTitle("");
@@ -88,6 +90,7 @@ export function ExamModal({
       setHoursPerDay("1");
       setCategoryId("");
       setTopics("");
+      setInterleaved(false);
       setRegenerate(false);
       setError("");
       setShowNewCategory(false);
@@ -146,6 +149,7 @@ export function ExamModal({
           examDate,
           dailyHours: parseFloat(hoursPerDay),
           categoryId: categoryId || null,
+          interleaved,
           regenerate,
           topics: topicList,
           today: todayStr,
@@ -169,6 +173,7 @@ export function ExamModal({
           dailyHours: parseFloat(hoursPerDay),
           topics: topicList,
           categoryId: categoryId || null,
+          interleaved,
           today: todayStr,
         }),
       });
@@ -338,6 +343,22 @@ export function ExamModal({
               placeholder={"Pochodne i całki\nMacierze\nRównania różniczkowe"}
               rows={4}
             />
+          </div>
+
+          <div className="flex items-start gap-3 p-3 rounded-lg border border-border bg-muted/30">
+            <input
+              type="checkbox"
+              id="interleaved"
+              checked={interleaved}
+              onChange={(e) => setInterleaved(e.target.checked)}
+              className="h-4 w-4 mt-0.5 accent-primary"
+            />
+            <label htmlFor="interleaved" className="text-sm cursor-pointer select-none">
+              <span className="font-medium">Przeplataj tematy</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                A→B→C→A→B→C zamiast A→A→B→B — skuteczniejsze zapamiętywanie
+              </span>
+            </label>
           </div>
 
           {isEditing && (

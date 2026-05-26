@@ -32,6 +32,7 @@ import {
   Lightbulb,
   Brain,
   BarChart2,
+  Shuffle,
 } from "lucide-react";
 import type { ExamWithSessions } from "@/types";
 import type { StudySession } from "@prisma/client";
@@ -205,6 +206,12 @@ export function ExamCard({
                   {daysUntil > 0 ? `zostało ${daysUntil} dni` : daysUntil === 0 ? "dziś!" : "termin minął"}
                 </span>
                 <span className="text-xs text-muted-foreground">{exam.dailyHours}h/dzień</span>
+                {exam.interleaved && (
+                  <Badge variant="outline" className="text-xs gap-1 text-primary border-primary/40">
+                    <Shuffle className="w-2.5 h-2.5" />
+                    Interleaving
+                  </Badge>
+                )}
                 {category && (
                   <Badge
                     variant="secondary"
