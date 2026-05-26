@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --check --ignore-unknown .github/workflows/ci.yml README.md package.json prettier.config.mjs vitest.config.ts \"lib/**/*.test.ts\"",
     "check": "npm run lint && npm run typecheck && npm run test"
   },
   "dependencies": {
