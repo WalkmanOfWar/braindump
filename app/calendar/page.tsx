@@ -121,13 +121,16 @@ function isToday(date: Date): boolean {
 function DraggableTaskCard({
   task,
   onOpen,
+  draggableId,
 }: {
   task: TaskWithCategory;
   onOpen: () => void;
+  draggableId?: string;
 }) {
+  const id = draggableId ?? task.id;
   const color = task.category?.color ?? "#6b7280";
   const { attributes, listeners, setNodeRef, isDragging } =
-    useDraggable({ id: task.id, data: { task } });
+    useDraggable({ id, data: { task } });
 
   const deadline = task.deadline
     ? new Date(task.deadline).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })
@@ -281,6 +284,7 @@ function WeekColumn({
                 <DraggableTaskCard
                   key={`task-${item.data.id}-${i}`}
                   task={item.data}
+                  draggableId={`${item.data.id}@${dayKey}`}
                   onOpen={() => onOpenItem(item)}
                 />
               ) : (
@@ -305,13 +309,16 @@ function WeekColumn({
 function DraggableTaskChip({
   task,
   onOpen,
+  draggableId,
 }: {
   task: TaskWithCategory;
   onOpen: () => void;
+  draggableId?: string;
 }) {
+  const id = draggableId ?? task.id;
   const color = task.category?.color ?? "#6b7280";
   const { attributes, listeners, setNodeRef, isDragging } =
-    useDraggable({ id: task.id, data: { task } });
+    useDraggable({ id, data: { task } });
 
   return (
     <div
@@ -395,6 +402,7 @@ function MonthCell({
             <DraggableTaskChip
               key={`mc-task-${item.data.id}-${j}`}
               task={item.data}
+              draggableId={`${item.data.id}@${dayKey}`}
               onOpen={() => onOpenItem(item)}
             />
           ) : (
@@ -743,7 +751,7 @@ export default function CalendarPage() {
     setActiveTaskId(null);
     if (!over) return;
 
-    const taskId = active.id as string;
+    const taskId = (active.id as string).split("@")[0];
     const overId = over.id as string;
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
@@ -814,7 +822,7 @@ export default function CalendarPage() {
     setSheetOpen(true);
   };
 
-  const activeTask = activeTaskId ? tasks.find((t) => t.id === activeTaskId) ?? null : null;
+  const activeTask = activeTaskId ? tasks.find((t) => t.id === activeTaskId.split("@")[0]) ?? null : null;
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-6">
