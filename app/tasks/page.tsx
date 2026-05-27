@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, ClipboardList, Sparkles, Search, AlertCircle, CheckSquare, Square, Trash2, CheckCheck, Download, LayoutGrid, List, Grid2x2, Zap } from "lucide-react";
+import { Plus, ClipboardList, Sparkles, Search, AlertCircle, CheckSquare, Square, Trash2, CheckCheck, Download, LayoutGrid, List, Grid2x2, Zap, Brain, Battery } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { toast } from "sonner";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
@@ -39,6 +39,7 @@ import type { TaskWithCategory, Category, UiTask } from "@/types";
 type FilterTab = "all" | "active" | "completed";
 type SortOption = "deadline" | "priority";
 type ViewMode = "list" | "kanban" | "matrix";
+type EnergyFilter = "all" | "high" | "low";
 
 function TaskSkeleton() {
   return (
@@ -72,6 +73,7 @@ export default function TasksPage() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [quickFilter, setQuickFilter] = useState(false);
+  const [energyFilter, setEnergyFilter] = useState<EnergyFilter>("all");
   const searchRef = useRef<HTMLInputElement>(null);
 
   useKeyboardShortcuts([
@@ -120,6 +122,9 @@ export default function TasksPage() {
     .filter((t) =>
       quickFilter ? !t.done && t.estimatedMinutes != null && t.estimatedMinutes <= 2 : true
     )
+    .filter((t) =>
+      energyFilter === "all" ? true : t.energyLevel === energyFilter
+    )
     .sort((a, b) => {
       if (sortBy === "deadline") {
         const dA = a.deadline ? new Date(a.deadline).getTime() : Infinity;
@@ -129,11 +134,13 @@ export default function TasksPage() {
       return b.priority - a.priority;
     });
 
-  const handleToggleComplete = async (id: string, completed: boolean) => {
+  const handleToggleComplete = async (id: string, completed: boolean, actualMinutes?: number) => {
+    const body: Record<string, unknown> = { done: completed };
+    if (completed && actualMinutes != null) body.actualMinutes = actualMinutes;
     const res = await fetch(`/api/tasks/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ done: completed }),
+      body: JSON.stringify(body),
     });
     if (res.ok) {
       const updated: TaskWithCategory = await res.json();
@@ -187,7 +194,7 @@ export default function TasksPage() {
 
   const handleKanbanUpdate = async (
     id: string,
-    updates: { done?: boolean; deadline?: string | null }
+    updates: { done?: boolean; deadline?: string | null; priority?: number; isUrgent?: boolean; isImportant?: boolean }
   ) => {
     const res = await fetch(`/api/tasks/${id}`, {
       method: "PATCH",
@@ -272,6 +279,9 @@ export default function TasksPage() {
           estimatedMinutes: taskData.estimatedMinutes ?? null,
           intentionWhen: taskData.intentionWhen ?? null,
           intentionWhere: taskData.intentionWhere ?? null,
+          isUrgent: taskData.isUrgent ?? false,
+          isImportant: taskData.isImportant ?? false,
+          energyLevel: taskData.energyLevel ?? null,
         }),
       });
       if (res.ok) {
@@ -298,6 +308,9 @@ export default function TasksPage() {
           estimatedMinutes: taskData.estimatedMinutes ?? null,
           intentionWhen: taskData.intentionWhen ?? null,
           intentionWhere: taskData.intentionWhere ?? null,
+          isUrgent: taskData.isUrgent ?? false,
+          isImportant: taskData.isImportant ?? false,
+          energyLevel: taskData.energyLevel ?? null,
         }),
       });
       if (res.ok) {
@@ -458,6 +471,28 @@ export default function TasksPage() {
               >
                 <Zap className="h-4 w-4 mr-1" />
                 2 min
+              </Button>
+            )}
+            {!selectionMode && (
+              <Button
+                variant={energyFilter === "high" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setEnergyFilter((v) => v === "high" ? "all" : "high")}
+                disabled={isLoading}
+                title="Zadania wymagające wysokiej energii"
+              >
+                <Brain className="h-4 w-4" />
+              </Button>
+            )}
+            {!selectionMode && (
+              <Button
+                variant={energyFilter === "low" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setEnergyFilter((v) => v === "low" ? "all" : "low")}
+                disabled={isLoading}
+                title="Zadania przy niskiej energii"
+              >
+                <Battery className="h-4 w-4" />
               </Button>
             )}
             {!selectionMode && (

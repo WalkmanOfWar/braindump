@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { ForgettingCurveChart } from "@/components/forgetting-curve-chart";
 import { TopNavbar } from "@/components/top-navbar";
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
@@ -644,6 +645,16 @@ function DeckCard({
             <Button variant="outline" size="sm" className="flex-1" onClick={onGenerate}>
               <Sparkles className="h-3.5 w-3.5 mr-1" />Generuj AI
             </Button>
+          </div>
+        )}
+
+        {/* Forgetting curve — show when deck has cards with stability data */}
+        {hasCards && deck.avgStability > 0 && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <ForgettingCurveChart
+              stabilities={[deck.avgStability]}
+              reviewDates={deck.recentReviews}
+            />
           </div>
         )}
       </div>

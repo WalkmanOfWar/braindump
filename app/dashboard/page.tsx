@@ -8,10 +8,11 @@ import { TaskCard } from "@/components/task-card";
 import { TaskModal } from "@/components/task-modal";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, CheckCircle2, ListTodo, BookOpen, Loader2, RefreshCw, Play, Target, Timer, Lightbulb } from "lucide-react";
+import { AlertCircle, CheckCircle2, ListTodo, BookOpen, Loader2, RefreshCw, Play, Target, Timer, Lightbulb, CalendarDays } from "lucide-react";
 import { useFocusMode } from "@/components/focus-mode";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { Button } from "@/components/ui/button";
+import { WeeklyPlanModal } from "@/components/weekly-plan-modal";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
 import { useDeadlineReminders } from "@/hooks/use-deadline-reminders";
 import { usePomodoroTimer } from "@/components/pomodoro-timer";
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   const [focusRec, setFocusRec] = useState<{ taskId: string; title: string; estimatedMinutes: number | null; reason: string } | null>(null);
   const [focusRecLoading, setFocusRecLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [weeklyPlanOpen, setWeeklyPlanOpen] = useState(false);
   const { startFocus } = useFocusMode();
 
   const fetchData = useCallback(async () => {
@@ -78,11 +80,13 @@ export default function DashboardPage() {
     }
   };
 
-  const handleToggleComplete = async (id: string, completed: boolean) => {
+  const handleToggleComplete = async (id: string, completed: boolean, actualMinutes?: number) => {
+    const body: Record<string, unknown> = { done: completed };
+    if (completed && actualMinutes != null) body.actualMinutes = actualMinutes;
     const res = await fetch(`/api/tasks/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ done: completed }),
+      body: JSON.stringify(body),
     });
     if (res.ok) {
       const updated: TaskWithCategory = await res.json();
@@ -353,6 +357,19 @@ export default function DashboardPage() {
           </a>
         </div>
 
+        {/* Weekly Planning CTA */}
+        <button
+          onClick={() => setWeeklyPlanOpen(true)}
+          className="w-full flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 hover:bg-primary/10 transition-colors text-left"
+        >
+          <CalendarDays className="w-5 h-5 text-primary shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-foreground">Plan tygodnia</p>
+            <p className="text-xs text-muted-foreground">Top 3 priorytety · Newport &amp; GTD</p>
+          </div>
+          <span className="ml-auto text-xs text-primary font-medium">Otwórz →</span>
+        </button>
+
         {/* Top 3 tasks */}
         <section>
           <h2 className="text-lg font-semibold text-foreground mb-4">
@@ -449,6 +466,8 @@ export default function DashboardPage() {
           }}
         />
       )}
+
+      <WeeklyPlanModal open={weeklyPlanOpen} onOpenChange={setWeeklyPlanOpen} />
     </div>
   );
 }
