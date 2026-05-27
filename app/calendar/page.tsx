@@ -118,23 +118,41 @@ function isToday(date: Date): boolean {
 // Week view — draggable task card (kanban-style)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// 1 slot = 30 min = 44px; proportional height for blocks view
+const SLOT_PX = 44;
+const SLOT_MIN = 30;
+
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h} godz`;
+  return `${h} godz ${m} min`;
+}
+
 function DraggableTaskCard({
   task,
   onOpen,
   draggableId,
+  durationMinutes,
 }: {
   task: TaskWithCategory;
   onOpen: () => void;
   draggableId?: string;
+  durationMinutes?: number;
 }) {
   const id = draggableId ?? task.id;
   const color = task.category?.color ?? "#6b7280";
   const { attributes, listeners, setNodeRef, isDragging } =
     useDraggable({ id, data: { task } });
 
-  const deadline = task.deadline
+  const deadline = !durationMinutes && task.deadline
     ? new Date(task.deadline).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })
     : null;
+
+  const blockHeight = durationMinutes
+    ? Math.max(SLOT_PX, Math.round((durationMinutes / SLOT_MIN) * SLOT_PX))
+    : undefined;
 
   return (
     <div
@@ -143,16 +161,17 @@ function DraggableTaskCard({
       {...attributes}
       style={{
         borderLeftColor: color,
+        ...(blockHeight ? { minHeight: blockHeight } : {}),
       }}
       className={cn(
-        "flex items-center gap-2 px-3 py-2.5 bg-card rounded-lg border border-l-[3px] shadow-sm",
+        "flex items-start gap-2 px-3 py-2.5 bg-card rounded-lg border border-l-[3px] shadow-sm",
         "touch-none select-none cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md",
         // Keep the source mounted so dnd-kit can keep measuring it while the
         // DragOverlay follows the pointer.
         isDragging && "opacity-0"
       )}
     >
-      <GripVertical className="w-3.5 h-3.5 shrink-0 text-muted-foreground/40" />
+      <GripVertical className="w-3.5 h-3.5 shrink-0 text-muted-foreground/40 mt-0.5" />
       <div className="flex-1 min-w-0">
         {/* Title is a div not a button — dnd-kit needs pointerdown to bubble.
             Click handler uses a movement guard inside onClick instead. */}
@@ -168,8 +187,14 @@ function DraggableTaskCard({
         >
           {task.title}
         </div>
-        {(deadline || task.category) && (
-          <div className="flex items-center gap-1.5 mt-0.5">
+        {(deadline || durationMinutes || task.category) && (
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            {durationMinutes && (
+              <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
+                <Clock className="w-2.5 h-2.5" />
+                {formatDuration(durationMinutes)}
+              </span>
+            )}
             {deadline && (
               <span className="text-[11px] text-muted-foreground">{deadline}</span>
             )}
@@ -184,7 +209,7 @@ function DraggableTaskCard({
           </div>
         )}
       </div>
-      {task.done && <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-urgency-low" />}
+      {task.done && <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-urgency-low mt-0.5" />}
     </div>
   );
 }
@@ -479,7 +504,12 @@ function TimeSlot({
         )}
       >
         {tasks.map(task => (
-          <DraggableTaskCard key={task.id} task={task} onOpen={() => onOpenItem({ type: "task", data: task })} />
+          <DraggableTaskCard
+            key={task.id}
+            task={task}
+            durationMinutes={task.estimatedMinutes ?? undefined}
+            onOpen={() => onOpenItem({ type: "task", data: task })}
+          />
         ))}
         {tasks.length === 0 && (
           <div className={cn(
