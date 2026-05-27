@@ -130,6 +130,103 @@ function formatDuration(minutes: number): string {
   return `${h} godz ${m} min`;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Google Calendar-style overlap layout
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Returns "#ffffff" or "#1a1a1a" based on the luminance of a hex color. */
+function getContrastColor(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.55 ? "#1a1a1a" : "#ffffff";
+}
+
+interface PositionedEvent {
+  task: TaskWithCategory;
+  topPx: number;
+  heightPx: number;
+  /** Column start as a fraction of total width [0, 1) */
+  leftFrac: number;
+  /** Column width as a fraction of total width (0, 1] */
+  widthFrac: number;
+}
+
+/**
+ * Assigns non-overlapping columns to tasks in the same time range, exactly
+ * like Google Calendar.  Two events that start at the same time or whose
+ * intervals overlap share the available horizontal space equally.
+ */
+function computeEventPositions(
+  tasksBySlot: Map<string, TaskWithCategory[]>
+): PositionedEvent[] {
+  type Interval = {
+    task: TaskWithCategory;
+    slotIdx: number;
+    startSlot: number; // index into BLOCK_SLOTS (float)
+    endSlot: number;   // exclusive end in slot units
+  };
+
+  const events: Interval[] = [];
+
+  BLOCK_SLOTS.forEach(({ hour, minute }, idx) => {
+    (tasksBySlot.get(slotKey(hour, minute)) ?? []).forEach((task) => {
+      // Ensure every event is at least 1 slot tall so it's visible
+      const durationSlots = Math.max(1, (task.estimatedMinutes ?? SLOT_MIN) / SLOT_MIN);
+      events.push({ task, slotIdx: idx, startSlot: idx, endSlot: idx + durationSlots });
+    });
+  });
+
+  if (events.length === 0) return [];
+
+  // Sort by start time; longer events first when start times are equal so they
+  // get the leftmost (highest-priority) column.
+  events.sort((a, b) =>
+    a.startSlot !== b.startSlot ? a.startSlot - b.startSlot : b.endSlot - a.endSlot
+  );
+
+  // Greedy column assignment: find the first column whose previous event has
+  // already ended before this event starts.
+  const colAssign: number[] = [];
+  const colEnds: number[] = []; // endSlot of the last event placed in each column
+
+  for (let i = 0; i < events.length; i++) {
+    let col = 0;
+    // +0.001 tolerance so events that share an exact boundary go in the same column
+    while (col < colEnds.length && colEnds[col] > events[i].startSlot + 0.001) col++;
+    colAssign[i] = col;
+    colEnds[col] = events[i].endSlot;
+  }
+
+  // For each event compute the total number of columns needed in its group —
+  // that is, 1 + the maximum column index of any event that overlaps with it.
+  const colCount: number[] = events.map((ev, i) => {
+    let max = colAssign[i];
+    for (let j = 0; j < events.length; j++) {
+      if (
+        i !== j &&
+        events[j].startSlot < ev.endSlot - 0.001 &&
+        events[j].endSlot > ev.startSlot + 0.001
+      ) {
+        max = Math.max(max, colAssign[j]);
+      }
+    }
+    return max + 1;
+  });
+
+  return events.map((ev, i) => ({
+    task: ev.task,
+    topPx: ev.slotIdx * SLOT_PX,
+    heightPx: Math.max(
+      SLOT_PX,
+      Math.round(((ev.task.estimatedMinutes ?? SLOT_MIN) / SLOT_MIN) * SLOT_PX)
+    ),
+    leftFrac: colAssign[i] / colCount[i],
+    widthFrac: 1 / colCount[i],
+  }));
+}
+
 function DraggableTaskCard({
   task,
   onOpen,
@@ -446,6 +543,74 @@ function MonthCell({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Time blocks view — Google Calendar-style event block
+// ─────────────────────────────────────────────────────────────────────────────
+
+function BlocksEventCard({
+  task,
+  heightPx,
+  onOpen,
+}: {
+  task: TaskWithCategory;
+  heightPx: number;
+  onOpen: () => void;
+}) {
+  const color = task.category?.color ?? "#7c5cff";
+  const fg = getContrastColor(color);
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: task.id,
+    data: { task },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className="h-full w-full rounded-md overflow-hidden touch-none cursor-grab active:cursor-grabbing flex flex-col px-2 py-1 gap-0.5 select-none"
+      style={{
+        backgroundColor: color,
+        boxShadow: `inset 0 0 0 1px rgba(0,0,0,0.12)`,
+        opacity: isDragging ? 0 : 1,
+      }}
+    >
+      {/* Title — click opens detail sheet */}
+      <div
+        role="button"
+        tabIndex={0}
+        className={cn(
+          "text-[11px] font-semibold leading-snug break-words line-clamp-2",
+          task.done && "line-through opacity-60"
+        )}
+        style={{ color: fg }}
+        onClick={(e) => { e.stopPropagation(); if (!isDragging) onOpen(); }}
+        onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}
+      >
+        {task.title}
+      </div>
+
+      {/* Duration — only when the block is tall enough */}
+      {heightPx > SLOT_PX && task.estimatedMinutes && (
+        <span
+          className="text-[10px] leading-tight shrink-0"
+          style={{ color: `${fg}b3` }}   /* 70 % opacity */
+        >
+          {formatDuration(task.estimatedMinutes)}
+        </span>
+      )}
+
+      {/* Completion checkmark */}
+      {task.done && (
+        <CheckCircle2
+          className="w-3 h-3 mt-auto shrink-0"
+          style={{ color: `${fg}99` }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Time blocks view — hour-slot droppable rows
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -536,6 +701,12 @@ function TimeBlocksView({
     return map;
   }, [tasks, dateKey]);
 
+  // Google Calendar-style column positions for all events on this day
+  const positionedTasks = useMemo(
+    () => computeEventPositions(tasksBySlot),
+    [tasksBySlot]
+  );
+
   // Tasks with no deadline, shown in an "unscheduled" panel
   const unscheduled = tasks.filter(t => !t.deadline && !t.done).slice(0, 10);
 
@@ -591,28 +762,29 @@ function TimeBlocksView({
               <TimeSlot key={slotKey(hour, minute)} dateKey={dateKey} hour={hour} minute={minute} />
             ))}
 
-            {/* Events layer — absolutely positioned, spans multiple slots */}
-            {BLOCK_SLOTS.map(({ hour, minute }, idx) => {
-              const slotTasks = tasksBySlot.get(slotKey(hour, minute)) ?? [];
-              return slotTasks.map((task) => {
-                const mins = task.estimatedMinutes ?? SLOT_MIN;
-                const heightPx = Math.max(SLOT_PX, Math.round((mins / SLOT_MIN) * SLOT_PX));
-                return (
-                  <div
-                    key={task.id}
-                    className="absolute left-1 right-1"
-                    style={{ top: idx * SLOT_PX, height: heightPx, zIndex: 10 }}
-                  >
-                    <DraggableTaskCard
-                      task={task}
-                      durationMinutes={task.estimatedMinutes ?? undefined}
-                      onOpen={() => onOpenItem({ type: "task", data: task })}
-                      className="h-full"
-                    />
-                  </div>
-                );
-              });
-            })}
+            {/* Events layer — Google Calendar-style: overlapping events placed
+                in adjacent columns proportional to the available width */}
+            {positionedTasks.map(({ task, topPx, heightPx, leftFrac, widthFrac }) => (
+              <div
+                key={task.id}
+                className="absolute"
+                style={{
+                  top: topPx,
+                  height: heightPx,
+                  // 2 px outer padding + proportional column position
+                  left: `calc(${(leftFrac * 100).toFixed(3)}% + 2px)`,
+                  // 4 px total horizontal gutter (2 px on each side of the block)
+                  width: `calc(${(widthFrac * 100).toFixed(3)}% - 4px)`,
+                  zIndex: 10,
+                }}
+              >
+                <BlocksEventCard
+                  task={task}
+                  heightPx={heightPx}
+                  onOpen={() => onOpenItem({ type: "task", data: task })}
+                />
+              </div>
+            ))}
           </div>
         </div>
       </div>
