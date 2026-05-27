@@ -25,6 +25,12 @@ import { Plus, Check, Sparkles, Loader2, Trash2, RepeatIcon, Timer, MapPin, Chev
 import type { UiTask, Category, Recurrence, Subtask, EnergyLevel } from '@/types'
 import { nanoid } from 'nanoid'
 
+/** datetime-local inputs expect YYYY-MM-DDTHH:MM in LOCAL time, not UTC. */
+function toDatetimeLocal(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 const PRESET_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#22c55e',
   '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899',
@@ -85,7 +91,7 @@ export function TaskModal({
     if (task) {
       setTitle(task.title)
       setDescription(task.description || '')
-      setDeadline(task.deadline.toISOString().slice(0, 16))
+      setDeadline(toDatetimeLocal(task.deadline))
       setPriority(task.priority)
       setCategoryId(task.categoryId)
       setSyncWithGoogle(task.syncWithGoogle)
@@ -114,7 +120,7 @@ export function TaskModal({
       setIntentionWhere('')
       setIntentionOpen(false)
       setIsUrgent(false)
-      setIsImportant(false)
+      setIsImportant(true)
       setEnergyLevel(null)
     }
     setNewSubtaskText('')
@@ -322,7 +328,7 @@ export function TaskModal({
                 const d = new Date()
                 d.setDate(d.getDate() + days)
                 d.setHours(23, 59, 0, 0)
-                const val = d.toISOString().slice(0, 16)
+                const val = toDatetimeLocal(d)
                 return (
                   <button
                     key={label}
