@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +22,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { MoreHorizontal, Pencil, Trash2, CalendarPlus, CalendarX2, Loader2, AlertTriangle, Repeat, Zap, MapPin } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { MoreHorizontal, Pencil, Trash2, CalendarPlus, CalendarX2, Loader2, AlertTriangle, Repeat, Zap, MapPin, Timer, Brain, Battery } from 'lucide-react'
 import type { UiTask } from '@/types'
 import { getUrgencyLevel, getUrgencyColor, formatDate } from '@/lib/utils'
 interface CategoryInfo {
@@ -33,7 +41,7 @@ interface TaskCardProps {
   task: UiTask
   variant?: 'default' | 'highlighted'
   categoryOverride?: CategoryInfo | null
-  onToggleComplete?: (id: string, completed: boolean) => void
+  onToggleComplete?: (id: string, completed: boolean, actualMinutes?: number) => void
   onEdit?: (task: UiTask) => void
   onDelete?: (id: string) => void
   onSyncCalendar?: (id: string, action: 'create' | 'delete') => Promise<void>
@@ -57,6 +65,8 @@ export function TaskCard({
   const [isCompleted, setIsCompleted] = useState(task.completed)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [showActualTime, setShowActualTime] = useState(false)
+  const [actualMinutesInput, setActualMinutesInput] = useState('')
   const category = categoryOverride ?? null
   const urgencyLevel = getUrgencyLevel(task.deadline)
   const urgencyColor = getUrgencyColor(urgencyLevel)
@@ -71,11 +81,25 @@ export function TaskCard({
     }
     const newValue = !isCompleted
     setIsCompleted(newValue)
-    onToggleComplete?.(task.id, newValue)
     if (newValue) {
       setJustCompleted(true)
       setTimeout(() => setJustCompleted(false), 600)
+      // If task had an estimate, ask for actual time (Planning Fallacy tracking)
+      if (task.estimatedMinutes) {
+        setActualMinutesInput('')
+        setShowActualTime(true)
+      } else {
+        onToggleComplete?.(task.id, true)
+      }
+    } else {
+      onToggleComplete?.(task.id, false)
     }
+  }
+
+  const handleActualTimeSubmit = (skip = false) => {
+    const actual = skip ? undefined : parseInt(actualMinutesInput, 10) || undefined
+    onToggleComplete?.(task.id, true, actual)
+    setShowActualTime(false)
   }
 
   const isHighlighted = variant === 'highlighted'
@@ -215,6 +239,27 @@ export function TaskCard({
             ))}
           </div>
 
+          {/* Eisenhower quadrant badge */}
+          {(task.isUrgent || task.isImportant) && (() => {
+            const q = task.isUrgent && task.isImportant ? { label: 'Q1', cls: 'text-destructive bg-destructive/10' }
+              : !task.isUrgent && task.isImportant ? { label: 'Q2', cls: 'text-green-700 dark:text-green-400 bg-green-500/10' }
+              : task.isUrgent && !task.isImportant ? { label: 'Q3', cls: 'text-orange-700 dark:text-orange-400 bg-orange-500/10' }
+              : { label: 'Q4', cls: 'text-muted-foreground bg-muted' }
+            return (
+              <span className={cn('inline-flex items-center text-xs font-bold rounded px-1.5 py-0.5', q.cls)}>
+                {q.label}
+              </span>
+            )
+          })()}
+
+          {/* Energy level badge */}
+          {task.energyLevel && task.energyLevel !== 'any' && (
+            <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+              {task.energyLevel === 'high' ? <Brain className="w-3 h-3" /> : <Battery className="w-3 h-3" />}
+              {task.energyLevel === 'high' ? 'wysoka' : 'niska'}
+            </span>
+          )}
+
           {/* Recurrence badge */}
           {task.recurrence && task.recurrence !== 'none' && (
             <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
@@ -289,6 +334,58 @@ export function TaskCard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Planning Fallacy: actual time dialog */}
+      <Dialog open={showActualTime} onOpenChange={(o) => { if (!o) handleActualTimeSubmit(true) }}>
+        <DialogContent className="sm:max-w-[340px]" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Timer className="w-4 h-4 text-primary" />
+              Ile to zajęło?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-3">
+            {task.estimatedMinutes && (
+              <p className="text-xs text-muted-foreground">
+                Szacowałeś <span className="font-medium">{task.estimatedMinutes} min</span>. Ile faktycznie?
+              </p>
+            )}
+            <div className="flex gap-1.5 flex-wrap">
+              {[5, 10, 15, 20, 30, 45, 60, 90, 120].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setActualMinutesInput(String(m))}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs border transition-colors',
+                    actualMinutesInput === String(m)
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
+                  )}
+                >
+                  {m < 60 ? `${m} min` : `${m / 60} godz`}
+                </button>
+              ))}
+            </div>
+            <Input
+              type="number"
+              min={1}
+              placeholder="Wpisz minuty..."
+              value={actualMinutesInput}
+              onChange={(e) => setActualMinutesInput(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" size="sm" onClick={() => handleActualTimeSubmit(true)}>
+              Pomiń
+            </Button>
+            <Button size="sm" onClick={() => handleActualTimeSubmit(false)} disabled={!actualMinutesInput}>
+              Zapisz
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
