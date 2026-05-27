@@ -16,7 +16,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Protect app routes — redirect to login with callbackUrl
-  const protectedPaths = ["/dashboard", "/today", "/tasks", "/exams", "/flashcards", "/calendar", "/stats", "/braindump", "/settings"];
+  const protectedPaths = ["/dashboard", "/today", "/tasks", "/exams", "/flashcards", "/calendar", "/stats", "/braindump", "/settings", "/habits"];
   // /share/:token is intentionally public — no auth required
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
 
@@ -40,6 +40,7 @@ export const config = {
     "/stats/:path*",
     "/braindump/:path*",
     "/settings/:path*",
+    "/habits/:path*",
     "/share/:path*",
     "/login",
     "/register",

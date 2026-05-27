@@ -19,18 +19,35 @@ import {
   Plus,
   ChevronRight,
   Play,
+  Repeat2,
+  Flame,
 } from "lucide-react";
 import Link from "next/link";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
 import { useDeadlineReminders } from "@/hooks/use-deadline-reminders";
 import { usePomodoroTimer } from "@/components/pomodoro-timer";
-import { getTodayStr, getDateStr, toUiTask } from "@/lib/utils";
-import type { TaskWithCategory, ExamWithSessions, Category, UiTask } from "@/types";
+import { getTodayStr, getDateStr, toUiTask, cn } from "@/lib/utils";
+import type { TaskWithCategory, ExamWithSessions, Category, UiTask, HabitWithCompletions } from "@/types";
+
+function calcHabitStreak(completions: { date: string }[]): number {
+  const datesSet = new Set(completions.map((c) => c.date));
+  const cur = new Date();
+  // Start from yesterday if today isn't done
+  if (!datesSet.has(cur.toLocaleDateString("sv-SE"))) cur.setDate(cur.getDate() - 1);
+  let streak = 0;
+  while (streak < 366) {
+    if (!datesSet.has(cur.toLocaleDateString("sv-SE"))) break;
+    streak++;
+    cur.setDate(cur.getDate() - 1);
+  }
+  return streak;
+}
 
 export default function TodayPage() {
   const [tasks, setTasks] = useState<TaskWithCategory[]>([]);
   const [exams, setExams] = useState<ExamWithSessions[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [habits, setHabits] = useState<HabitWithCompletions[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [editingTask, setEditingTask] = useState<UiTask | null>(null);
@@ -38,15 +55,17 @@ export default function TodayPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [tasksRes, examsRes, catsRes] = await Promise.all([
+      const [tasksRes, examsRes, catsRes, habitsRes] = await Promise.all([
         fetch("/api/tasks"),
         fetch("/api/exams"),
         fetch("/api/categories"),
+        fetch("/api/habits"),
       ]);
       if (!tasksRes.ok || !examsRes.ok || !catsRes.ok) throw new Error();
       setTasks(await tasksRes.json());
       setExams(await examsRes.json());
       setCategories(await catsRes.json());
+      if (habitsRes.ok) setHabits(await habitsRes.json());
     } catch {
       setIsError(true);
     } finally {
@@ -163,6 +182,27 @@ export default function TodayPage() {
   };
 
   const handleSyncCalendar = useCalendarSync(setTasks);
+
+  const handleToggleHabit = useCallback(async (habitId: string) => {
+    const today = new Date().toLocaleDateString("sv-SE");
+    setHabits((prev) =>
+      prev.map((h) => {
+        if (h.id !== habitId) return h;
+        const has = h.completions.some((c) => c.date === today);
+        return {
+          ...h,
+          completions: has
+            ? h.completions.filter((c) => c.date !== today)
+            : [...h.completions, { id: `opt-${today}`, habitId, date: today }],
+        };
+      })
+    );
+    await fetch(`/api/habits/${habitId}/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: today }),
+    });
+  }, []);
 
   useDeadlineReminders(tasks);
   const { start: startPomodoro } = usePomodoroTimer();
@@ -296,6 +336,54 @@ export default function TodayPage() {
             Nowe
           </Button>
         </div>
+
+        {/* Habits quick-check */}
+        {habits.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Repeat2 className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                  Nawyki
+                </h2>
+                <Badge variant="secondary" className="text-xs">
+                  {habits.filter((h) => h.completions.some((c) => c.date === new Date().toLocaleDateString("sv-SE"))).length}/{habits.length}
+                </Badge>
+              </div>
+              <Link href="/habits" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5">
+                Wszystkie <ChevronRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {habits.map((habit) => {
+                const today = new Date().toLocaleDateString("sv-SE");
+                const done = habit.completions.some((c) => c.date === today);
+                const streak = calcHabitStreak(habit.completions);
+                return (
+                  <button
+                    key={habit.id}
+                    onClick={() => handleToggleHabit(habit.id)}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-sm font-medium",
+                      done
+                        ? "border-transparent text-white"
+                        : "border-border bg-card text-foreground hover:border-primary/40"
+                    )}
+                    style={done ? { backgroundColor: habit.color } : {}}
+                  >
+                    <span>{done ? "✓" : habit.emoji}</span>
+                    <span className="truncate max-w-[120px]">{habit.title}</span>
+                    {streak > 1 && (
+                      <span className={cn("flex items-center gap-0.5 text-xs", done ? "text-white/80" : "text-orange-500")}>
+                        <Flame className="w-3 h-3" />{streak}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Overdue tasks */}
         {overdueTasks.length > 0 && (

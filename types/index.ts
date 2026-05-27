@@ -1,6 +1,8 @@
-import type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard, Quiz, WeeklyPlan } from "@prisma/client";
+import type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard, Quiz, WeeklyPlan, Habit, HabitCompletion } from "@prisma/client";
 
-export type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard, Quiz, WeeklyPlan };
+export type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard, Quiz, WeeklyPlan, Habit, HabitCompletion };
+
+export type HabitWithCompletions = Habit & { completions: HabitCompletion[] };
 
 export type EnergyLevel = "high" | "low" | "any";
 
