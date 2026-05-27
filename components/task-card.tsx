@@ -48,6 +48,7 @@ interface TaskCardProps {
   selectionMode?: boolean
   selected?: boolean
   onSelect?: (id: string) => void
+  weeklyMatch?: boolean
 }
 
 export function TaskCard({
@@ -61,6 +62,7 @@ export function TaskCard({
   selectionMode = false,
   selected = false,
   onSelect,
+  weeklyMatch = false,
 }: TaskCardProps) {
   const [isCompleted, setIsCompleted] = useState(task.completed)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -257,6 +259,16 @@ export function TaskCard({
             <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
               {task.energyLevel === 'high' ? <Brain className="w-3 h-3" /> : <Battery className="w-3 h-3" />}
               {task.energyLevel === 'high' ? 'wysoka' : 'niska'}
+            </span>
+          )}
+
+          {/* Weekly plan match badge */}
+          {weeklyMatch && !isCompleted && (
+            <span className={cn(
+              "inline-flex items-center gap-0.5 text-[10px] font-medium rounded-full px-1.5 py-0.5",
+              isHighlighted ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+            )} title="Pasuje do priorytetu tygodnia">
+              ⭐ Plan
             </span>
           )}
 

@@ -37,6 +37,12 @@ type StatsData = {
   bestDay: string | null;
   bestHour: number | null;
   avgPerDay: number;
+  // Phase 5
+  planningByCategory: { name: string; color: string; estimatedMin: number; actualMin: number; count: number }[];
+  deviationHistogram: { label: string; count: number }[];
+  planningFallacyTotal: number;
+  planningFallacyAvgBias: number | null;
+  energyTrend: { date: string; completed: number; energy: number | null }[];
 };
 
 type FlashcardStats = {
@@ -260,6 +266,88 @@ export default function StatsPage() {
               </ResponsiveContainer>
             </div>
 
+            {/* 5.4 Energy vs productivity trend */}
+            {data.energyTrend.some((d) => d.energy !== null) && (
+              <div className="bg-card border border-border rounded-xl p-4">
+                <h2 className="text-sm font-semibold text-foreground mb-1">
+                  Energia vs ukończone zadania — ostatnie 30 dni
+                </h2>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Sprawdź czy wysoka energia koreluje z większą produktywnością
+                </p>
+                <ResponsiveContainer width="100%" height={180}>
+                  <LineChart data={data.energyTrend} margin={{ left: 0, right: 28, top: 8, bottom: 0 }}>
+                    <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={formatDate}
+                      tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                      interval={4}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      yAxisId="tasks"
+                      allowDecimals={false}
+                      tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={22}
+                    />
+                    <YAxis
+                      yAxisId="energy"
+                      orientation="right"
+                      domain={[1, 5]}
+                      ticks={[1, 2, 3, 4, 5]}
+                      tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={22}
+                    />
+                    <Tooltip
+                      formatter={(v: unknown, name: unknown) =>
+                        name === "energy"
+                          ? [`${v ?? "–"}/5`, "Energia"]
+                          : [`${v ?? 0}`, "Zadania"]
+                      }
+                      labelFormatter={(l: unknown) => formatDate(String(l))}
+                      contentStyle={{
+                        background: "var(--card)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Line
+                      yAxisId="tasks"
+                      type="monotone"
+                      dataKey="completed"
+                      stroke="var(--primary)"
+                      strokeWidth={2}
+                      dot={{ r: 2, fill: "var(--primary)" }}
+                      activeDot={{ r: 4 }}
+                      name="tasks"
+                    />
+                    <Line
+                      yAxisId="energy"
+                      type="monotone"
+                      dataKey="energy"
+                      stroke="#f59e0b"
+                      strokeWidth={2}
+                      dot={{ r: 2.5, fill: "#f59e0b" }}
+                      activeDot={{ r: 4 }}
+                      connectNulls={false}
+                      name="energy"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+                <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-primary inline-block rounded" /> Zadania</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-amber-400 inline-block rounded" /> Energia (1–5)</span>
+                </div>
+              </div>
+            )}
+
             {/* Day of week + Hour of day */}
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="bg-card border border-border rounded-xl p-4">
@@ -446,6 +534,112 @@ export default function StatsPage() {
                     );
                   })}
                 </div>
+              </div>
+            )}
+            {/* 5.1 Planning Fallacy */}
+            {data.planningFallacyTotal > 0 && (
+              <div className="border-t border-border pt-6 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" />
+                      Błąd planowania — Planning Fallacy
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Kahneman (1979): ludzie systematycznie zaniżają czas zadań
+                    </p>
+                  </div>
+                  {data.planningFallacyAvgBias !== null && (
+                    <div className={cn(
+                      "shrink-0 text-right",
+                      data.planningFallacyAvgBias > 20 ? "text-destructive" : data.planningFallacyAvgBias < -20 ? "text-blue-500" : "text-urgency-low"
+                    )}>
+                      <p className="text-2xl font-bold leading-tight">
+                        {data.planningFallacyAvgBias > 0 ? "+" : ""}{data.planningFallacyAvgBias}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {data.planningFallacyAvgBias > 0 ? "zajmuje dłużej" : "zajmuje krócej"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Deviation histogram */}
+                <div className="bg-card border border-border rounded-xl p-4">
+                  <h3 className="text-xs font-medium text-muted-foreground mb-3">
+                    Rozkład odchyleń (rzeczywisty czas vs planowany) · {data.planningFallacyTotal} zadań
+                  </h3>
+                  <ResponsiveContainer width="100%" height={140}>
+                    <BarChart data={data.deviationHistogram} barSize={36} margin={{ left: 0, right: 0, top: 0, bottom: 0 }}>
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis hide allowDecimals={false} />
+                      <Tooltip
+                        formatter={(v: unknown) => [`${v ?? 0} zadań`, ""]}
+                        contentStyle={{
+                          background: "var(--card)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 8,
+                          fontSize: 12,
+                        }}
+                      />
+                      <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                        {data.deviationHistogram.map((d, i) => (
+                          <Cell
+                            key={i}
+                            fill={
+                              i < 2 ? "var(--primary)" :       // finished faster
+                              i === 2 ? "#10b981" :             // slightly under
+                              i === 3 ? "#f59e0b" :             // slightly over
+                              "var(--destructive)"              // took much longer
+                            }
+                            fillOpacity={d.count === 0 ? 0.2 : 0.85}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-2.5 rounded-sm bg-primary inline-block opacity-85" />Szybciej</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-2.5 rounded-sm bg-green-500 inline-block opacity-85" />OK</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-2.5 rounded-sm bg-destructive inline-block opacity-85" />Dłużej</span>
+                  </div>
+                </div>
+
+                {/* Per-category breakdown */}
+                {data.planningByCategory.length > 0 && (
+                  <div className="bg-card border border-border rounded-xl overflow-hidden">
+                    <div className="px-4 py-3 border-b border-border">
+                      <h3 className="text-xs font-medium text-muted-foreground">Odchylenie wg kategorii</h3>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {data.planningByCategory.map((c) => {
+                        const bias = c.estimatedMin > 0
+                          ? Math.round(((c.actualMin - c.estimatedMin) / c.estimatedMin) * 100)
+                          : 0;
+                        return (
+                          <div key={c.name} className="px-4 py-3 flex items-center gap-3">
+                            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                            <span className="text-sm flex-1 text-foreground">{c.name}</span>
+                            <span className="text-xs text-muted-foreground shrink-0">
+                              {Math.round(c.estimatedMin / 60 * 10) / 10}h est → {Math.round(c.actualMin / 60 * 10) / 10}h real
+                            </span>
+                            <span className={cn(
+                              "text-xs font-semibold w-14 text-right shrink-0",
+                              bias > 20 ? "text-destructive" : bias < -20 ? "text-blue-500" : "text-urgency-low"
+                            )}>
+                              {bias > 0 ? "+" : ""}{bias}%
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </>
