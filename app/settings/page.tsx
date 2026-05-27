@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Download, Upload, Trash2, User, Bell, Palette, LogOut, Loader2, Sun, Moon } from "lucide-react";
+import { Download, Upload, Trash2, User, Bell, Palette, LogOut, Loader2, Sun, Moon, Link2, Copy, Check, RefreshCw } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { PushSubscribeButton } from "@/components/push-subscribe";
@@ -60,6 +60,9 @@ export default function SettingsPage() {
   const [importing, setImporting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null | undefined>(undefined);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const handleImport = async (file: File) => {
     setImporting(true);
@@ -85,6 +88,65 @@ export default function SettingsPage() {
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const handleLoadShareToken = async () => {
+    if (shareToken !== undefined) return;
+    setShareLoading(true);
+    try {
+      const res = await fetch("/api/share");
+      const data = await res.json() as { shareToken: string | null };
+      setShareToken(data.shareToken);
+    } catch {
+      toast.error("Nie udało się załadować linku");
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const handleGenerateShareLink = async () => {
+    setShareLoading(true);
+    try {
+      const res = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "generate" }),
+      });
+      const data = await res.json() as { shareToken: string };
+      setShareToken(data.shareToken);
+    } catch {
+      toast.error("Nie udało się wygenerować linku");
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const handleRevokeShareLink = async () => {
+    setShareLoading(true);
+    try {
+      await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "revoke" }),
+      });
+      setShareToken(null);
+      toast.success("Link dezaktywowany");
+    } catch {
+      toast.error("Nie udało się dezaktywować linku");
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const shareUrl = shareToken
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/share/${shareToken}`
+    : null;
+
+  const handleCopyShareUrl = async () => {
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
   };
 
   const handleDelete = async () => {
@@ -199,6 +261,58 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">
               Import dodaje rekordy do istniejących — nie nadpisuje. Plik musi być w formacie eksportu Brain Dump.
             </p>
+          </div>
+        </Section>
+
+        {/* Peer Accountability */}
+        <Section
+          icon={Link2}
+          title="Publiczny link do statystyk"
+          description="Ariely & Wertenbroch (2002) — publiczne zobowiązanie zwiększa dotrzymywanie terminów o ~31%"
+        >
+          <div className="space-y-3">
+            {shareToken === undefined && !shareLoading && (
+              <Button variant="outline" size="sm" onClick={handleLoadShareToken} className="w-full">
+                Pokaż opcje udostępniania
+              </Button>
+            )}
+            {shareLoading && (
+              <div className="flex justify-center py-2">
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {shareToken === null && !shareLoading && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Brak aktywnego linku. Wygeneruj go i udostępnij znajomemu — widoczne będą tylko statystyki (bez danych osobowych).
+                </p>
+                <Button size="sm" onClick={handleGenerateShareLink} className="w-full gap-1.5">
+                  <Link2 className="w-3.5 h-3.5" />
+                  Wygeneruj link
+                </Button>
+              </div>
+            )}
+            {shareToken && !shareLoading && shareUrl && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+                  <span className="flex-1 text-xs text-muted-foreground truncate font-mono">{shareUrl}</span>
+                  <button onClick={handleCopyShareUrl} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
+                    {shareCopied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={handleCopyShareUrl} className="flex-1 gap-1.5">
+                    {shareCopied ? <><Check className="w-3.5 h-3.5 text-green-500" />Skopiowano!</> : <><Copy className="w-3.5 h-3.5" />Kopiuj link</>}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleGenerateShareLink} className="gap-1.5" title="Wygeneruj nowy token">
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={handleRevokeShareLink} className="text-destructive hover:text-destructive">
+                    Dezaktywuj
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </Section>
 

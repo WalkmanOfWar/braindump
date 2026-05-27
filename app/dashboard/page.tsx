@@ -13,6 +13,8 @@ import { useFocusMode } from "@/components/focus-mode";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { Button } from "@/components/ui/button";
 import { WeeklyPlanModal } from "@/components/weekly-plan-modal";
+import { EnergyCheckInModal, useEnergyCheckIn } from "@/components/energy-checkin-modal";
+import { CognitiveLoadBanner } from "@/components/cognitive-load-banner";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
 import { useDeadlineReminders } from "@/hooks/use-deadline-reminders";
 import { usePomodoroTimer } from "@/components/pomodoro-timer";
@@ -32,6 +34,7 @@ export default function DashboardPage() {
   const [focusRecLoading, setFocusRecLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [weeklyPlanOpen, setWeeklyPlanOpen] = useState(false);
+  const { open: energyOpen, setOpen: setEnergyOpen, todayLevel, handleCheckedIn } = useEnergyCheckIn();
   const { startFocus } = useFocusMode();
 
   const fetchData = useCallback(async () => {
@@ -271,6 +274,9 @@ export default function DashboardPage() {
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-8">
 
+        {/* Cognitive Load Monitor (Miller's Law) */}
+        <CognitiveLoadBanner activeTaskCount={activeTasks} />
+
         {/* Co teraz? */}
         <div className="rounded-xl border border-border bg-card/60 p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -355,6 +361,19 @@ export default function DashboardPage() {
             <p className="text-2xl font-bold text-foreground">{dueFlashcards}</p>
             <p className="text-xs text-muted-foreground">do powtórki dziś</p>
           </a>
+          <button
+            onClick={() => setEnergyOpen(true)}
+            className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1 hover:shadow-sm transition-shadow text-left"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-base leading-none">
+                {todayLevel === 1 ? '😴' : todayLevel === 2 ? '😪' : todayLevel === 3 ? '😐' : todayLevel === 4 ? '😊' : todayLevel === 5 ? '🚀' : '⚡'}
+              </span>
+              <span className="text-xs text-muted-foreground">Energia</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{todayLevel ?? '–'}</p>
+            <p className="text-xs text-muted-foreground">{todayLevel ? 'dziś' : 'zaznacz'}</p>
+          </button>
         </div>
 
         {/* Weekly Planning CTA */}
@@ -468,6 +487,7 @@ export default function DashboardPage() {
       )}
 
       <WeeklyPlanModal open={weeklyPlanOpen} onOpenChange={setWeeklyPlanOpen} />
+      <EnergyCheckInModal open={energyOpen} onOpenChange={setEnergyOpen} onCheckedIn={handleCheckedIn} />
     </div>
   );
 }

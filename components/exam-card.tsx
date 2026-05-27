@@ -33,6 +33,7 @@ import {
   Brain,
   BarChart2,
   Shuffle,
+  RefreshCw,
 } from "lucide-react";
 import type { ExamWithSessions } from "@/types";
 import type { StudySession } from "@prisma/client";
@@ -162,6 +163,9 @@ export function ExamCard({
   const completedSessions = exam.studySessions.filter((s) => s.done).length;
   const totalSessions = exam.studySessions.length;
   const progressPercent = totalSessions > 0 ? (completedSessions / totalSessions) * 100 : 0;
+  const dueForReviewCount = exam.studySessions.filter(
+    (s) => s.done && s.nextReviewAt && new Date(s.nextReviewAt) <= new Date()
+  ).length;
 
   const getCountdownColor = () => {
     if (daysUntil <= 0) return "bg-destructive/15 text-destructive border border-destructive/25";
@@ -223,6 +227,12 @@ export function ExamCard({
                   >
                     {category.name}
                   </Badge>
+                )}
+                {dueForReviewCount > 0 && (
+                  <span className="inline-flex items-center gap-0.5 rounded-md bg-orange-500/10 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 text-xs font-medium">
+                    <RefreshCw className="w-3 h-3" />
+                    {dueForReviewCount} do powtórki
+                  </span>
                 )}
               </div>
             </div>
@@ -312,6 +322,17 @@ export function ExamCard({
 
                     {/* Confidence dot (done sessions) */}
                     {session.done && <ConfidenceDot confidence={session.confidence} />}
+
+                    {/* Spaced Practice: due for review badge */}
+                    {session.done && session.nextReviewAt && new Date(session.nextReviewAt) <= new Date() && (
+                      <span
+                        className="inline-flex items-center gap-0.5 rounded-md bg-orange-500/10 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 text-[10px] font-medium shrink-0"
+                        title="Czas na powtórkę tego tematu (Spaced Practice)"
+                      >
+                        <RefreshCw className="w-2.5 h-2.5" />
+                        Powtórka
+                      </span>
+                    )}
 
                     <span className="inline-flex items-center rounded-md bg-accent/15 text-accent px-2 py-0.5 text-xs font-medium shrink-0">
                       {session.hours}h
