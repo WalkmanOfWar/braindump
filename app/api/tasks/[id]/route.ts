@@ -60,7 +60,7 @@ export async function PATCH(
     );
   }
 
-  const { title, description, deadline, priority, categoryId, goalId, estimatedMinutes, done, recurrence, recurrenceEnd, subtasks, intentionWhen, intentionWhere } = parsed.data;
+  const { title, description, deadline, priority, categoryId, goalId, estimatedMinutes, actualMinutes, done, recurrence, recurrenceEnd, subtasks, intentionWhen, intentionWhere, isUrgent, isImportant, energyLevel } = parsed.data;
 
   const task = await prisma.task.update({
     where: { id },
@@ -72,8 +72,12 @@ export async function PATCH(
       ...(categoryId !== undefined ? { categoryId } : {}),
       ...(goalId !== undefined ? { goalId } : {}),
       ...(estimatedMinutes !== undefined ? { estimatedMinutes } : {}),
+      ...(actualMinutes !== undefined ? { actualMinutes } : {}),
       ...(intentionWhen !== undefined ? { intentionWhen } : {}),
       ...(intentionWhere !== undefined ? { intentionWhere } : {}),
+      ...(isUrgent !== undefined ? { isUrgent } : {}),
+      ...(isImportant !== undefined ? { isImportant } : {}),
+      ...(energyLevel !== undefined ? { energyLevel } : {}),
       ...(done !== undefined ? { done, doneAt: done ? new Date() : null } : {}),
       ...(recurrence !== undefined ? { recurrence } : {}),
       ...(recurrenceEnd !== undefined ? { recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null } : {}),

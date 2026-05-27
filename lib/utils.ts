@@ -68,9 +68,13 @@ export function toUiTask(t: TaskWithCategory): UiTask {
     recurrence: (t.recurrence ?? "none") as Recurrence,
     recurrenceEnd: t.recurrenceEnd ? new Date(t.recurrenceEnd) : undefined,
     subtasks: Array.isArray(t.subtasks) ? (t.subtasks as Subtask[]) : undefined,
-    estimatedMinutes: (t as TaskWithCategory & { estimatedMinutes?: number | null }).estimatedMinutes ?? null,
-    intentionWhen: (t as TaskWithCategory & { intentionWhen?: string | null }).intentionWhen ?? null,
-    intentionWhere: (t as TaskWithCategory & { intentionWhere?: string | null }).intentionWhere ?? null,
+    estimatedMinutes: t.estimatedMinutes ?? null,
+    actualMinutes: t.actualMinutes ?? null,
+    intentionWhen: t.intentionWhen ?? null,
+    intentionWhere: t.intentionWhere ?? null,
+    isUrgent: t.isUrgent,
+    isImportant: t.isImportant,
+    energyLevel: (t.energyLevel as import("@/types").EnergyLevel | null) ?? null,
   };
 }
 

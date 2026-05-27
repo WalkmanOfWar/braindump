@@ -1,6 +1,8 @@
-import type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard, Quiz } from "@prisma/client";
+import type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard, Quiz, WeeklyPlan } from "@prisma/client";
 
-export type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard, Quiz };
+export type { Task, Exam, StudySession, Category, FlashcardDeck, Flashcard, Quiz, WeeklyPlan };
+
+export type EnergyLevel = "high" | "low" | "any";
 
 export type Recurrence = "none" | "daily" | "weekly" | "monthly";
 
@@ -24,8 +26,12 @@ export type UiTask = {
   recurrenceEnd?: Date;
   subtasks?: Subtask[];
   estimatedMinutes?: number | null;
+  actualMinutes?: number | null;
   intentionWhen?: string | null;
   intentionWhere?: string | null;
+  isUrgent?: boolean;
+  isImportant?: boolean;
+  energyLevel?: EnergyLevel | null;
 };
 
 export type TaskWithCategory = Task & {
@@ -46,10 +52,25 @@ export type TaskCreateInput = {
   recurrence?: Recurrence;
   recurrenceEnd?: string;
   subtasks?: Subtask[];
+  estimatedMinutes?: number | null;
+  actualMinutes?: number | null;
+  intentionWhen?: string | null;
+  intentionWhere?: string | null;
+  isUrgent?: boolean;
+  isImportant?: boolean;
+  energyLevel?: EnergyLevel | null;
 };
 
 export type TaskUpdateInput = Partial<TaskCreateInput> & {
   done?: boolean;
+};
+
+export type WeeklyPlanInput = {
+  weekStart: string; // ISO date string (Monday)
+  priority1?: string;
+  priority2?: string;
+  priority3?: string;
+  notes?: string;
 };
 
 export type ExamCreateInput = {
@@ -73,6 +94,8 @@ export type FlashcardDeckWithStats = FlashcardDeck & {
   _count: { cards: number };
   dueCount: number;
   newCount: number;
+  avgStability: number;
+  recentReviews: string[];
 };
 
 export type FlashcardWithDeck = Flashcard & { deck: FlashcardDeck };

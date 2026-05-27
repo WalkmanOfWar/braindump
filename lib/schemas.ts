@@ -17,13 +17,25 @@ export const TaskCreateSchema = z.object({
   recurrenceEnd: z.string().optional().nullable(),
   subtasks: z.array(SubtaskSchema).optional().nullable(),
   estimatedMinutes: z.number().int().positive().optional().nullable(),
+  actualMinutes: z.number().int().positive().optional().nullable(),
   intentionWhen: z.string().max(200).optional().nullable(),
   intentionWhere: z.string().max(200).optional().nullable(),
+  isUrgent: z.boolean().default(false),
+  isImportant: z.boolean().default(false),
+  energyLevel: z.enum(["high", "low", "any"]).optional().nullable(),
 });
 
 export const TaskUpdateSchema = TaskCreateSchema.partial().extend({
   done: z.boolean().optional(),
   reminderSentAt: z.string().nullable().optional(),
+});
+
+export const WeeklyPlanSchema = z.object({
+  weekStart: z.string().min(1, "Data tygodnia jest wymagana"),
+  priority1: z.string().max(200).optional().nullable(),
+  priority2: z.string().max(200).optional().nullable(),
+  priority3: z.string().max(200).optional().nullable(),
+  notes: z.string().max(1000).optional().nullable(),
 });
 
 export const ExamCreateSchema = z.object({

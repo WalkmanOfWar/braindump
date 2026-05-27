@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   }
 
   const deckIds = decks.map((d) => d.id);
-  const [dueCounts, newCounts] = await Promise.all([
+  const [dueCounts, newCounts, stabilityRows, reviewRows] = await Promise.all([
     prisma.flashcard.groupBy({
       by: ["deckId"],
       where: { deckId: { in: deckIds }, due: { lte: now } },
@@ -39,15 +39,41 @@ export async function GET(req: NextRequest) {
       where: { deckId: { in: deckIds }, state: 0 },
       _count: { id: true },
     }),
+    // Average stability per deck (for forgetting curve)
+    prisma.flashcard.groupBy({
+      by: ["deckId"],
+      where: { deckId: { in: deckIds }, stability: { gt: 0 } },
+      _avg: { stability: true },
+    }),
+    // Last 20 review dates per deck (for curve markers)
+    prisma.flashcardReview.findMany({
+      where: { card: { deckId: { in: deckIds } } },
+      select: { reviewedAt: true, card: { select: { deckId: true } } },
+      orderBy: { reviewedAt: "desc" },
+      take: 200, // generous ceiling, filtered per deck below
+    }),
   ]);
 
   const dueMap = Object.fromEntries(dueCounts.map((r) => [r.deckId, r._count.id]));
-  const newMap  = Object.fromEntries(newCounts.map((r) => [r.deckId, r._count.id]));
+  const newMap = Object.fromEntries(newCounts.map((r) => [r.deckId, r._count.id]));
+  const stabMap = Object.fromEntries(stabilityRows.map((r) => [r.deckId, r._avg.stability ?? 0]));
+
+  // Group recent review dates by deckId (up to 20 per deck)
+  const reviewMap: Record<string, string[]> = {};
+  for (const r of reviewRows) {
+    const deckId = r.card.deckId;
+    if (!reviewMap[deckId]) reviewMap[deckId] = [];
+    if (reviewMap[deckId].length < 20) {
+      reviewMap[deckId].push(r.reviewedAt.toISOString());
+    }
+  }
 
   const result = decks.map((deck) => ({
     ...deck,
     dueCount: dueMap[deck.id] ?? 0,
     newCount: newMap[deck.id] ?? 0,
+    avgStability: stabMap[deck.id] ?? 0,
+    recentReviews: reviewMap[deck.id] ?? [],
   }));
 
   return NextResponse.json(result);

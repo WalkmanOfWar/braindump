@@ -21,8 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { Plus, Check, Sparkles, Loader2, Trash2, RepeatIcon, Timer, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
-import type { UiTask, Category, Recurrence, Subtask } from '@/types'
+import { Plus, Check, Sparkles, Loader2, Trash2, RepeatIcon, Timer, MapPin, ChevronDown, ChevronUp, Zap, Brain, Battery } from 'lucide-react'
+import type { UiTask, Category, Recurrence, Subtask, EnergyLevel } from '@/types'
 import { nanoid } from 'nanoid'
 
 const PRESET_COLORS = [
@@ -60,6 +60,9 @@ export function TaskModal({
   const [intentionWhen, setIntentionWhen] = useState('')
   const [intentionWhere, setIntentionWhere] = useState('')
   const [intentionOpen, setIntentionOpen] = useState(false)
+  const [isUrgent, setIsUrgent] = useState(false)
+  const [isImportant, setIsImportant] = useState(false)
+  const [energyLevel, setEnergyLevel] = useState<EnergyLevel | null>(null)
 
   // Subtasks
   const [subtasks, setSubtasks] = useState<Subtask[]>([])
@@ -89,10 +92,13 @@ export function TaskModal({
       setRecurrence(task.recurrence ?? 'none')
       setRecurrenceEnd(task.recurrenceEnd ? task.recurrenceEnd.toISOString().slice(0, 10) : '')
       setSubtasks(task.subtasks ?? [])
-      setEstimatedMinutes((task as UiTask & { estimatedMinutes?: number | null }).estimatedMinutes ?? null)
-      setIntentionWhen((task as UiTask).intentionWhen ?? '')
-      setIntentionWhere((task as UiTask).intentionWhere ?? '')
-      setIntentionOpen(!!(task as UiTask).intentionWhen || !!(task as UiTask).intentionWhere)
+      setEstimatedMinutes(task.estimatedMinutes ?? null)
+      setIntentionWhen(task.intentionWhen ?? '')
+      setIntentionWhere(task.intentionWhere ?? '')
+      setIntentionOpen(!!task.intentionWhen || !!task.intentionWhere)
+      setIsUrgent(task.isUrgent ?? false)
+      setIsImportant(task.isImportant ?? false)
+      setEnergyLevel(task.energyLevel ?? null)
     } else {
       setTitle('')
       setDescription('')
@@ -107,6 +113,9 @@ export function TaskModal({
       setIntentionWhen('')
       setIntentionWhere('')
       setIntentionOpen(false)
+      setIsUrgent(false)
+      setIsImportant(false)
+      setEnergyLevel(null)
     }
     setNewSubtaskText('')
     setAdHocText('')
@@ -214,6 +223,9 @@ export function TaskModal({
       estimatedMinutes: estimatedMinutes ?? undefined,
       intentionWhen: intentionWhen.trim() || null,
       intentionWhere: intentionWhere.trim() || null,
+      isUrgent,
+      isImportant,
+      energyLevel,
     })
     onOpenChange(false)
   }
@@ -351,6 +363,72 @@ export function TaskModal({
                 >
                   {level}
                 </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Eisenhower Matrix */}
+          <div className="space-y-2">
+            <Label>Matriks Eisenhowera</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { key: 'Q1', urgent: true,  important: true,  label: 'Q1 · Zrób teraz',   color: 'bg-destructive/10 border-destructive/40 text-destructive' },
+                { key: 'Q2', urgent: false, important: true,  label: 'Q2 · Zaplanuj',      color: 'bg-green-500/10 border-green-500/40 text-green-700 dark:text-green-400' },
+                { key: 'Q3', urgent: true,  important: false, label: 'Q3 · Deleguj',       color: 'bg-orange-500/10 border-orange-500/40 text-orange-700 dark:text-orange-400' },
+                { key: 'Q4', urgent: false, important: false, label: 'Q4 · Usuń',          color: 'bg-muted/60 border-border text-muted-foreground' },
+              ].map(({ key, urgent, important, label, color }) => {
+                const active = isUrgent === urgent && isImportant === important
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => { setIsUrgent(urgent); setIsImportant(important) }}
+                    className={cn(
+                      'rounded-lg border px-3 py-2 text-xs font-medium text-left transition-all',
+                      active ? color + ' ring-1 ring-inset ring-current' : 'border-border text-muted-foreground hover:border-primary/40'
+                    )}
+                  >
+                    <span className="font-bold">{label.split(' · ')[0]}</span>
+                    <span className="ml-1 font-normal opacity-80">{label.split(' · ')[1]}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="flex gap-3 text-xs text-muted-foreground">
+              <span className={cn('flex items-center gap-1', isUrgent && 'text-destructive font-medium')}>
+                <Zap className="w-3 h-3" /> {isUrgent ? 'Pilne' : 'Niepilne'}
+              </span>
+              <span className={cn('flex items-center gap-1', isImportant && 'text-green-600 dark:text-green-400 font-medium')}>
+                <Brain className="w-3 h-3" /> {isImportant ? 'Ważne' : 'Nieważne'}
+              </span>
+            </div>
+          </div>
+
+          {/* Energy level */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <Battery className="w-3.5 h-3.5" />
+              Poziom energii
+            </Label>
+            <div className="flex gap-1.5">
+              {([
+                { value: 'high', label: '🧠 Wysoka', desc: 'Głębokie myślenie' },
+                { value: 'low',  label: '🌿 Niska',  desc: 'Mechaniczne zadania' },
+                { value: 'any',  label: '⚡ Dowolna', desc: '' },
+              ] as { value: EnergyLevel; label: string; desc: string }[]).map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setEnergyLevel(energyLevel === value ? null : value)}
+                  className={cn(
+                    'flex-1 px-2 py-1.5 rounded-md text-xs border transition-colors',
+                    energyLevel === value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
+                  )}
+                >
+                  {label}
+                </button>
               ))}
             </div>
           </div>

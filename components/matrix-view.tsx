@@ -86,26 +86,32 @@ const QUADRANTS: Quadrant[] = [
 // ---------------------------------------------------------------------------
 
 function getQuadrant(task: TaskWithCategory): string {
+  // Prefer explicit Eisenhower fields set by the user
+  if (task.isUrgent !== undefined && task.isImportant !== undefined) {
+    if (task.isUrgent && task.isImportant) return "q1";
+    if (!task.isUrgent && task.isImportant) return "q2";
+    if (task.isUrgent && !task.isImportant) return "q3";
+    return "q4";
+  }
+  // Fallback heuristic: deadline ≤ 3 days = urgent, priority ≥ 4 = important
   const daysUntil = task.deadline
     ? Math.ceil((new Date(task.deadline).getTime() - Date.now()) / 86_400_000)
     : null;
-
   const urgent = daysUntil !== null && daysUntil <= 3;
   const important = task.priority >= 4;
-
   if (urgent && important) return "q1";
   if (!urgent && important) return "q2";
   if (urgent && !important) return "q3";
   return "q4";
 }
 
-function updatesForQuadrant(id: string): { priority: number; deadline?: string } {
+function updatesForQuadrant(id: string): { priority: number; deadline?: string; isUrgent: boolean; isImportant: boolean } {
   const d = new Date();
   d.setHours(23, 59, 0, 0);
-  if (id === "q1") { d.setDate(d.getDate() + 2); return { priority: 5, deadline: d.toISOString() }; }
-  if (id === "q2") { d.setDate(d.getDate() + 14); return { priority: 4, deadline: d.toISOString() }; }
-  if (id === "q3") { d.setDate(d.getDate() + 2); return { priority: 2, deadline: d.toISOString() }; }
-  return { priority: 1 };
+  if (id === "q1") { d.setDate(d.getDate() + 2); return { priority: 5, deadline: d.toISOString(), isUrgent: true, isImportant: true }; }
+  if (id === "q2") { d.setDate(d.getDate() + 14); return { priority: 4, deadline: d.toISOString(), isUrgent: false, isImportant: true }; }
+  if (id === "q3") { d.setDate(d.getDate() + 2); return { priority: 2, deadline: d.toISOString(), isUrgent: true, isImportant: false }; }
+  return { priority: 1, isUrgent: false, isImportant: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -253,7 +259,7 @@ function DragOverlayCard({ task }: { task: TaskWithCategory | null }) {
 
 export interface MatrixViewProps {
   tasks: TaskWithCategory[];
-  onUpdate: (id: string, updates: { priority?: number; deadline?: string }) => Promise<void>;
+  onUpdate: (id: string, updates: { priority?: number; deadline?: string | null; isUrgent?: boolean; isImportant?: boolean }) => Promise<void>;
   onEdit: (task: UiTask) => void;
 }
 
