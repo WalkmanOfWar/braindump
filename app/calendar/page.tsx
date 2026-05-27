@@ -135,11 +135,13 @@ function DraggableTaskCard({
   onOpen,
   draggableId,
   durationMinutes,
+  className,
 }: {
   task: TaskWithCategory;
   onOpen: () => void;
   draggableId?: string;
   durationMinutes?: number;
+  className?: string;
 }) {
   const id = draggableId ?? task.id;
   const color = task.category?.color ?? "#6b7280";
@@ -150,31 +152,21 @@ function DraggableTaskCard({
     ? new Date(task.deadline).toLocaleDateString("pl-PL", { day: "numeric", month: "short" })
     : null;
 
-  const blockHeight = durationMinutes
-    ? Math.max(SLOT_PX, Math.round((durationMinutes / SLOT_MIN) * SLOT_PX))
-    : undefined;
-
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      style={{
-        borderLeftColor: color,
-        ...(blockHeight ? { minHeight: blockHeight } : {}),
-      }}
+      style={{ borderLeftColor: color }}
       className={cn(
         "flex items-start gap-2 px-3 py-2.5 bg-card rounded-lg border border-l-[3px] shadow-sm",
         "touch-none select-none cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md",
-        // Keep the source mounted so dnd-kit can keep measuring it while the
-        // DragOverlay follows the pointer.
-        isDragging && "opacity-0"
+        isDragging && "opacity-0",
+        className
       )}
     >
       <GripVertical className="w-3.5 h-3.5 shrink-0 text-muted-foreground/40 mt-0.5" />
       <div className="flex-1 min-w-0">
-        {/* Title is a div not a button — dnd-kit needs pointerdown to bubble.
-            Click handler uses a movement guard inside onClick instead. */}
         <div
           role="button"
           tabIndex={0}
@@ -457,22 +449,18 @@ function MonthCell({
 // Time blocks view — hour-slot droppable rows
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Pure droppable row — no time label, no task rendering (events are in a separate layer)
 function TimeSlot({
   dateKey,
   hour,
   minute,
-  tasks,
-  onOpenItem,
 }: {
   dateKey: string;
   hour: number;
   minute: number;
-  tasks: TaskWithCategory[];
-  onOpenItem: (item: CalendarItem) => void;
 }) {
   const slotId = `${dateKey}T${slotKey(hour, minute)}`;
   const { setNodeRef, isOver } = useDroppable({ id: slotId });
-  const label = slotKey(hour, minute);
   const now = new Date();
   const isCurrent =
     dateKey === now.toLocaleDateString("sv-SE") &&
@@ -481,44 +469,16 @@ function TimeSlot({
   const isHalf = minute === 30;
 
   return (
-    <div className="flex gap-3 group min-h-[44px]">
-      {/* Time label */}
-      <div className="w-12 shrink-0 pt-0.5 text-right">
-        <span className={cn(
-          "text-xs font-mono tabular-nums",
-          isCurrent ? "text-primary font-semibold" : isHalf ? "text-muted-foreground/35" : "text-muted-foreground/70"
-        )}>
-          {label}
-        </span>
-      </div>
-
-      {/* Drop zone */}
-      <div
-        ref={setNodeRef}
-        className={cn(
-          "flex-1 min-h-10 px-1 py-1 space-y-1 rounded-md transition-[background-color,border-color,box-shadow]",
-          // Solid line on the hour, dashed line on the half-hour: one target equals 30 minutes.
-          isHalf ? "border-t border-dashed border-border/30" : "border-t border-border/60",
-          isOver && "bg-primary/[0.045] shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.16)]",
-          isCurrent && "border-primary/40"
-        )}
-      >
-        {tasks.map(task => (
-          <DraggableTaskCard
-            key={task.id}
-            task={task}
-            durationMinutes={task.estimatedMinutes ?? undefined}
-            onOpen={() => onOpenItem({ type: "task", data: task })}
-          />
-        ))}
-        {tasks.length === 0 && (
-          <div className={cn(
-            "h-8 rounded-md border border-transparent transition-[background-color,border-color]",
-            isOver ? "border-primary/20 bg-primary/10" : "group-hover:border-border/60 group-hover:bg-muted/25"
-          )} />
-        )}
-      </div>
-    </div>
+    <div
+      ref={setNodeRef}
+      style={{ height: SLOT_PX }}
+      className={cn(
+        "transition-[background-color,border-color,box-shadow]",
+        isHalf ? "border-t border-dashed border-border/30" : "border-t border-border/60",
+        isOver && "bg-primary/[0.045] shadow-[inset_0_0_0_2px_hsl(var(--primary)/0.16)]",
+        isCurrent && "border-primary/40"
+      )}
+    />
   );
 }
 
@@ -600,18 +560,60 @@ function TimeBlocksView({
           </button>
         </div>
 
-        {/* Time slots — 30-min granularity */}
-        <div className="space-y-0">
-          {BLOCK_SLOTS.map(({ hour, minute }) => (
-            <TimeSlot
-              key={`${hour}-${minute}`}
-              dateKey={dateKey}
-              hour={hour}
-              minute={minute}
-              tasks={tasksBySlot.get(slotKey(hour, minute)) ?? []}
-              onOpenItem={onOpenItem}
-            />
-          ))}
+        {/* Time grid — two-column: labels | layered calendar area */}
+        <div className="flex gap-3">
+          {/* Time labels */}
+          <div className="w-12 shrink-0 select-none">
+            {BLOCK_SLOTS.map(({ hour, minute }) => {
+              const now = new Date();
+              const isCurrent =
+                dateKey === now.toLocaleDateString("sv-SE") &&
+                hour === now.getHours() &&
+                ((minute === 0 && now.getMinutes() < 30) || (minute === 30 && now.getMinutes() >= 30));
+              const isHalf = minute === 30;
+              return (
+                <div key={slotKey(hour, minute)} style={{ height: SLOT_PX }} className="flex items-start justify-end pr-1 pt-0.5">
+                  <span className={cn(
+                    "text-xs font-mono tabular-nums",
+                    isCurrent ? "text-primary font-semibold" : isHalf ? "text-muted-foreground/30" : "text-muted-foreground/70"
+                  )}>
+                    {slotKey(hour, minute)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Calendar area: drop zones + events as separate layers */}
+          <div className="flex-1 relative" style={{ height: BLOCK_SLOTS.length * SLOT_PX }}>
+            {/* Drop zones layer */}
+            {BLOCK_SLOTS.map(({ hour, minute }) => (
+              <TimeSlot key={slotKey(hour, minute)} dateKey={dateKey} hour={hour} minute={minute} />
+            ))}
+
+            {/* Events layer — absolutely positioned, spans multiple slots */}
+            {BLOCK_SLOTS.map(({ hour, minute }, idx) => {
+              const slotTasks = tasksBySlot.get(slotKey(hour, minute)) ?? [];
+              return slotTasks.map((task) => {
+                const mins = task.estimatedMinutes ?? SLOT_MIN;
+                const heightPx = Math.max(SLOT_PX, Math.round((mins / SLOT_MIN) * SLOT_PX));
+                return (
+                  <div
+                    key={task.id}
+                    className="absolute left-1 right-1"
+                    style={{ top: idx * SLOT_PX, height: heightPx, zIndex: 10 }}
+                  >
+                    <DraggableTaskCard
+                      task={task}
+                      durationMinutes={task.estimatedMinutes ?? undefined}
+                      onOpen={() => onOpenItem({ type: "task", data: task })}
+                      className="h-full"
+                    />
+                  </div>
+                );
+              });
+            })}
+          </div>
         </div>
       </div>
 
