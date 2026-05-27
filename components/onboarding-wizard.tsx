@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckSquare, GraduationCap, Lightbulb, ArrowRight, X, Sparkles } from "lucide-react";
+import { CheckSquare, GraduationCap, Lightbulb, ArrowRight, X, Sparkles, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -21,9 +21,11 @@ interface StepProps {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STEPS = [
-  { id: "welcome", title: "Witaj w Brain Dump!" },
-  { id: "first-task", title: "Dodaj pierwsze zadanie" },
-  { id: "done", title: "Gotowe!" },
+  { id: "welcome",        title: "Witaj w Brain Dump!" },
+  { id: "first-task",     title: "Dodaj pierwsze zadanie" },
+  { id: "first-exam",     title: "Zaplanuj egzamin" },
+  { id: "first-flashcard",title: "Utwórz talię fiszek" },
+  { id: "done",           title: "Gotowe!" },
 ] as const;
 
 // ─── Step 1: Welcome ──────────────────────────────────────────────────────────
@@ -82,7 +84,7 @@ function FirstTaskStep({ onNext, onSkip }: StepProps) {
     });
     setSaving(false);
     if (res.ok) {
-      toast.success(`Zadanie "${title}" dodane!`);
+      toast.success(`Zadanie „${title}" dodane!`);
       onNext();
     } else {
       toast.error("Nie udało się dodać zadania");
@@ -99,7 +101,7 @@ function FirstTaskStep({ onNext, onSkip }: StepProps) {
 
       <div className="space-y-3">
         <Input
-          placeholder="np. Przeczytać rozdziały 3-5"
+          placeholder="np. Przeczytać rozdziały 3–5"
           value={title}
           onChange={e => setTitle(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && title.trim()) handleCreate(); }}
@@ -127,7 +129,151 @@ function FirstTaskStep({ onNext, onSkip }: StepProps) {
   );
 }
 
-// ─── Step 3: Done ─────────────────────────────────────────────────────────────
+// ─── Step 3: First Exam ───────────────────────────────────────────────────────
+
+function FirstExamStep({ onNext, onSkip }: StepProps) {
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const handleCreate = async () => {
+    if (!title.trim() || !date) return;
+    setSaving(true);
+    const res = await fetch("/api/exams", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: title.trim(),
+        examDate: new Date(date).toISOString(),
+        dailyHours: 1,
+        topics: [],
+        today,
+      }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      toast.success(`Egzamin „${title}" dodany z planem nauki!`);
+      onNext();
+    } else {
+      toast.error("Nie udało się dodać egzaminu");
+    }
+  };
+
+  return (
+    <div>
+      <div className="text-4xl text-center mb-4">🎓</div>
+      <h2 className="text-xl font-bold text-center mb-1">Zaplanuj egzamin</h2>
+      <p className="text-sm text-muted-foreground text-center mb-6">
+        Podaj przedmiot i datę — wygenerujemy plan nauki.
+      </p>
+
+      <div className="space-y-3">
+        <Input
+          placeholder="np. Matematyka Analiza 2"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          autoFocus
+        />
+        <div className="relative">
+          <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            type="date"
+            className="pl-9"
+            value={date}
+            min={today}
+            onChange={e => setDate(e.target.value)}
+          />
+        </div>
+
+        <Button
+          onClick={handleCreate}
+          disabled={!title.trim() || !date || saving}
+          className="w-full gap-2"
+          size="lg"
+        >
+          {saving ? "Dodawanie…" : "Dodaj egzamin"}
+          <ArrowRight className="w-4 h-4" />
+        </Button>
+      </div>
+
+      <button
+        onClick={onSkip}
+        className="w-full mt-3 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+      >
+        Pomiń ten krok
+      </button>
+    </div>
+  );
+}
+
+// ─── Step 4: First Flashcard Deck ─────────────────────────────────────────────
+
+function FirstFlashcardStep({ onNext, onSkip }: StepProps) {
+  const [title, setTitle] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleCreate = async () => {
+    if (!title.trim()) return;
+    setSaving(true);
+    const res = await fetch("/api/flashcards", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: title.trim(), emoji: "📚", color: "#7c5cff" }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      toast.success(`Talia „${title}" utworzona!`);
+      onNext();
+    } else {
+      toast.error("Nie udało się utworzyć talii");
+    }
+  };
+
+  return (
+    <div>
+      <div className="text-4xl text-center mb-4">📚</div>
+      <h2 className="text-xl font-bold text-center mb-1">Utwórz talię fiszek</h2>
+      <p className="text-sm text-muted-foreground text-center mb-6">
+        Fiszki z powtórkami SRS pomagają zapamiętać materiał na dłużej.
+      </p>
+
+      <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-4 text-sm text-muted-foreground">
+        💡 Możesz też wygenerować fiszki z egzaminu przy użyciu AI — wystarczy kilka kliknięć!
+      </div>
+
+      <div className="space-y-3">
+        <Input
+          placeholder="np. Anatomia, Wzory matematyczne…"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && title.trim()) handleCreate(); }}
+          autoFocus
+        />
+
+        <Button
+          onClick={handleCreate}
+          disabled={!title.trim() || saving}
+          className="w-full gap-2"
+          size="lg"
+        >
+          {saving ? "Tworzenie…" : "Utwórz talię"}
+          <ArrowRight className="w-4 h-4" />
+        </Button>
+      </div>
+
+      <button
+        onClick={onSkip}
+        className="w-full mt-3 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+      >
+        Pomiń ten krok
+      </button>
+    </div>
+  );
+}
+
+// ─── Step 5: Done ─────────────────────────────────────────────────────────────
 
 function DoneStep({ onNext }: StepProps) {
   return (
@@ -142,7 +288,7 @@ function DoneStep({ onNext }: StepProps) {
 
       <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6 text-left space-y-2">
         {[
-          "📌 Zacznij od zakładki \"Dziś\" — zobaczysz co masz na ten dzień",
+          '📌 Zacznij od zakładki "Dziś" — zobaczysz co masz na ten dzień',
           "🤖 Użyj AI na stronie zadań żeby posortować priorytety",
           "⏱️ Tryb skupienia pomaga pracować bez rozpraszaczy",
         ].map(tip => (
@@ -205,7 +351,9 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
         {/* Step content */}
         {step === 0 && <WelcomeStep {...stepProps} />}
         {step === 1 && <FirstTaskStep {...stepProps} />}
-        {step === 2 && <DoneStep {...stepProps} />}
+        {step === 2 && <FirstExamStep {...stepProps} />}
+        {step === 3 && <FirstFlashcardStep {...stepProps} />}
+        {step === 4 && <DoneStep {...stepProps} />}
       </div>
     </div>
   );

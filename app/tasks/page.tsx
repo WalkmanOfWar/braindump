@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, ClipboardList, Sparkles, Search, AlertCircle, CheckSquare, Square, Trash2, CheckCheck, Download, LayoutGrid, List, Grid2x2, Zap, Brain, Battery } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { toast } from "sonner";
 import { useCalendarSync } from "@/hooks/use-calendar-sync";
@@ -185,6 +186,26 @@ export default function TasksPage() {
       toast.success("Zadanie usunięte");
     } else {
       toast.error("Nie udało się usunąć zadania");
+    }
+  };
+
+  const handleSkipOccurrence = async (id: string) => {
+    const res = await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skipOccurrence: true }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.deleted) {
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+        toast.success("Seria zakończona — brak kolejnych instancji");
+      } else {
+        setTasks((prev) => prev.map((t) => (t.id === id ? data : t)));
+        toast.success("Instancja pominięta");
+      }
+    } else {
+      toast.error("Nie udało się pominąć instancji");
     }
   };
 
@@ -630,6 +651,7 @@ export default function TasksPage() {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onSyncCalendar={handleSyncCalendar}
+                onSkipOccurrence={handleSkipOccurrence}
                 selectionMode={selectionMode}
                 selected={selectedIds.has(task.id)}
                 onSelect={handleSelect}
@@ -638,28 +660,20 @@ export default function TasksPage() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-4">
-              <ClipboardList className="w-10 h-10 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              {searchQuery ? "Brak wyników" : "Brak zadań"}
-            </h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {searchQuery
-                ? `Nie znaleziono zadań pasujących do "${searchQuery}"`
-                : "Dodaj pierwsze zadanie!"}
-            </p>
-            {!searchQuery && (
-              <Button
-                onClick={() => { setEditingTask(null); setModalOpen(true); }}
-                className="bg-accent text-accent-foreground hover:bg-accent/90"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Dodaj zadanie
-              </Button>
-            )}
-          </div>
+          <EmptyState
+            emoji={searchQuery ? "🔍" : "📋"}
+            title={searchQuery ? "Brak wyników" : "Brak zadań"}
+            description={
+              searchQuery
+                ? `Nie znaleziono zadań pasujących do „${searchQuery}"`
+                : "Wszystko ogarnięte! Dodaj nowe zadanie, żeby zacząć."
+            }
+            action={
+              !searchQuery
+                ? { label: "Dodaj zadanie", onClick: () => { setEditingTask(null); setModalOpen(true); } }
+                : undefined
+            }
+          />
         )}
       </main>
 
