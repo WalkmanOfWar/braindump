@@ -75,6 +75,7 @@ export default function TasksPage() {
   const [quickFilter, setQuickFilter] = useState(false);
   const [energyFilter, setEnergyFilter] = useState<EnergyFilter>("all");
   const searchRef = useRef<HTMLInputElement>(null);
+  const [weeklyPriorities, setWeeklyPriorities] = useState<string[]>([]);
 
   useKeyboardShortcuts([
     { key: "n", action: () => { setEditingTask(null); setModalOpen(true); } },
@@ -100,7 +101,28 @@ export default function TasksPage() {
 
   useEffect(() => {
     fetchTasks();
+    // Fetch current week's plan for highlight matching (fire-and-forget, non-blocking)
+    const monday = new Date();
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    monday.setHours(0, 0, 0, 0);
+    fetch(`/api/weekly-plan?weekStart=${monday.toISOString()}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((plan: { priority1?: string | null; priority2?: string | null; priority3?: string | null } | null) => {
+        if (!plan) return;
+        setWeeklyPriorities([plan.priority1, plan.priority2, plan.priority3].filter(Boolean) as string[]);
+      })
+      .catch(() => {});
   }, [fetchTasks]);
+
+  // Returns true if task title words overlap with any weekly priority text
+  const matchesWeeklyPlan = useCallback((title: string): boolean => {
+    if (!weeklyPriorities.length) return false;
+    const titleWords = title.toLowerCase().split(/\s+/).filter((w) => w.length >= 4);
+    return weeklyPriorities.some((prio) => {
+      const prioWords = prio.toLowerCase().split(/\s+/).filter((w) => w.length >= 4);
+      return prioWords.some((pw) => titleWords.some((tw) => tw.includes(pw) || pw.includes(tw)));
+    });
+  }, [weeklyPriorities]);
 
   const filtered = tasks
     .filter((t) => {
@@ -611,6 +633,7 @@ export default function TasksPage() {
                 selectionMode={selectionMode}
                 selected={selectedIds.has(task.id)}
                 onSelect={handleSelect}
+                weeklyMatch={matchesWeeklyPlan(task.title)}
               />
             ))}
           </div>

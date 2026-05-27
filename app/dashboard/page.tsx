@@ -376,6 +376,39 @@ export default function DashboardPage() {
           </button>
         </div>
 
+        {/* 5.2 Energy-matched task suggestions */}
+        {todayLevel && (() => {
+          const matchLevel = todayLevel >= 4 ? "high" : todayLevel <= 2 ? "low" : null;
+          const energyLabel = todayLevel >= 4 ? "wysokiej energii" : todayLevel <= 2 ? "niskiej energii" : null;
+          const matched = tasks.filter((t) => {
+            if (t.done) return false;
+            if (!matchLevel) return t.energyLevel === "any";
+            return t.energyLevel === matchLevel || t.energyLevel === "any";
+          }).slice(0, 3);
+          if (!matched.length || !energyLabel) return null;
+          const emoji = todayLevel === 5 ? "🚀" : todayLevel === 4 ? "😊" : todayLevel === 2 ? "😪" : "😴";
+          return (
+            <div className="rounded-xl border border-border bg-card/60 p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <span className="text-base">{emoji}</span>
+                Zadania dopasowane do energii
+                <span className="text-xs text-muted-foreground font-normal ml-1">· {energyLabel}</span>
+              </div>
+              <div className="space-y-1.5">
+                {matched.map((task) => (
+                  <div key={task.id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-background border border-border/60 text-sm">
+                    <span className="text-base leading-none">{task.energyLevel === "high" ? "⚡" : "🌿"}</span>
+                    <span className="flex-1 text-foreground truncate">{task.title}</span>
+                    {task.estimatedMinutes && (
+                      <span className="text-xs text-muted-foreground shrink-0">~{task.estimatedMinutes < 60 ? `${task.estimatedMinutes}m` : `${Math.round(task.estimatedMinutes / 60)}h`}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Weekly Planning CTA */}
         <button
           onClick={() => setWeeklyPlanOpen(true)}
