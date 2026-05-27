@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { TopNavbar } from "@/components/top-navbar";
 import { BottomNav } from "@/components/bottom-nav";
@@ -63,6 +63,39 @@ export default function SettingsPage() {
   const [shareToken, setShareToken] = useState<string | null | undefined>(undefined);
   const [shareLoading, setShareLoading] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+
+  // Reminder preferences
+  const [reminderEnabled, setReminderEnabled] = useState(true);
+  const [reminderHours, setReminderHours] = useState(24);
+  const [reminderFetched, setReminderFetched] = useState(false);
+  const [reminderSaving, setReminderSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/account/preferences")
+      .then((r) => r.json())
+      .then((data: { reminderEnabled: boolean; reminderHoursBefore: number }) => {
+        setReminderEnabled(data.reminderEnabled);
+        setReminderHours(data.reminderHoursBefore);
+      })
+      .catch(() => {})
+      .finally(() => setReminderFetched(true));
+  }, []);
+
+  const saveReminderPrefs = async (enabled: boolean, hours: number) => {
+    setReminderSaving(true);
+    try {
+      await fetch("/api/account/preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reminderEnabled: enabled, reminderHoursBefore: hours }),
+      });
+      toast.success("Zapisano ustawienia powiadomień");
+    } catch {
+      toast.error("Nie udało się zapisać");
+    } finally {
+      setReminderSaving(false);
+    }
+  };
 
   const handleImport = async (file: File) => {
     setImporting(true);
@@ -214,7 +247,8 @@ export default function SettingsPage() {
 
         {/* Notifications */}
         <Section icon={Bell} title="Powiadomienia" description="Push w przeglądarce + email przy zbliżających się terminach">
-          <div className="space-y-3">
+          <div className="space-y-4">
+            {/* Push */}
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Powiadomienia push</p>
@@ -222,10 +256,71 @@ export default function SettingsPage() {
               </div>
               <PushSubscribeButton />
             </div>
-            <div className="text-xs text-muted-foreground border-t border-border pt-3 space-y-1">
-              <p>• 08:00 — przypomnienia o terminach</p>
-              <p>• Niedziela 20:00 — tygodniowy przegląd</p>
+
+            {/* Email reminders toggle */}
+            <div className="flex items-center justify-between border-t border-border pt-3">
+              <div>
+                <p className="text-sm font-medium">Przypomnienia email</p>
+                <p className="text-xs text-muted-foreground">
+                  {session?.user?.email ?? "Twój adres e-mail"}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  if (!reminderFetched) return;
+                  const next = !reminderEnabled;
+                  setReminderEnabled(next);
+                  saveReminderPrefs(next, reminderHours);
+                }}
+                disabled={!reminderFetched || reminderSaving}
+                className={cn(
+                  "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+                  reminderEnabled ? "bg-primary" : "bg-muted-foreground/30"
+                )}
+                role="switch"
+                aria-checked={reminderEnabled}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-4 w-4 rounded-full bg-white shadow transition-transform",
+                    reminderEnabled ? "translate-x-6" : "translate-x-1"
+                  )}
+                />
+              </button>
             </div>
+
+            {/* Hours before deadline */}
+            {reminderEnabled && reminderFetched && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Na ile przed terminem?
+                </p>
+                <div className="flex gap-1.5">
+                  {([1, 2, 6, 24, 48] as const).map((h) => (
+                    <button
+                      key={h}
+                      onClick={() => {
+                        setReminderHours(h);
+                        saveReminderPrefs(reminderEnabled, h);
+                      }}
+                      disabled={reminderSaving}
+                      className={cn(
+                        "flex-1 py-1.5 text-xs rounded-lg border transition-colors disabled:opacity-50",
+                        reminderHours === h
+                          ? "border-primary bg-primary/5 text-primary font-medium"
+                          : "border-border text-muted-foreground hover:border-primary/40"
+                      )}
+                    >
+                      {h < 24 ? `${h}h` : h === 24 ? "24h" : "2 dni"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground border-t border-border pt-3">
+              Tygodniowy przegląd wysyłany w niedzielę o 18:00
+            </p>
           </div>
         </Section>
 
