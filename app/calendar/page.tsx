@@ -515,10 +515,25 @@ function TimeBlocksView({
 
     tasks.forEach(task => {
       if (!task.deadline) return;
-      const d = new Date(task.deadline);
-      if (d.toLocaleDateString("sv-SE") !== dateKey) return;
-      let h = d.getHours();
-      let m = d.getMinutes() < 30 ? 0 : 30;
+      const base = new Date(task.deadline);
+      const baseDateKey = base.toLocaleDateString("sv-SE");
+
+      let appearsOnDate = baseDateKey === dateKey;
+      if (!appearsOnDate && task.recurrence && task.recurrence !== "none") {
+        const target = new Date(dateKey);
+        const end = task.recurrenceEnd ? new Date(task.recurrenceEnd) : null;
+        if (target >= base && (!end || target <= end)) {
+          const diffDays = Math.round((target.getTime() - base.getTime()) / 86400000);
+          if (task.recurrence === "daily") appearsOnDate = true;
+          else if (task.recurrence === "weekly" && diffDays % 7 === 0) appearsOnDate = true;
+          else if (task.recurrence === "monthly" && target.getDate() === base.getDate()) appearsOnDate = true;
+        }
+      }
+      if (!appearsOnDate) return;
+
+      // Slot time comes from the original deadline (hours/minutes)
+      let h = base.getHours();
+      let m = base.getMinutes() < 30 ? 0 : 30;
       // Clamp out-of-range deadlines to the first/last visible slot
       const first = BLOCK_SLOTS[0];
       const last = BLOCK_SLOTS[BLOCK_SLOTS.length - 1];
