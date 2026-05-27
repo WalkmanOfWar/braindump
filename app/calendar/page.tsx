@@ -666,12 +666,38 @@ export default function CalendarPage() {
   const itemsByDate = useMemo(() => {
     const map = new Map<string, CalendarItem[]>();
 
-    tasks.forEach((task) => {
-      if (!task.deadline) return;
-      const key = new Date(task.deadline).toLocaleDateString("sv-SE");
+    const addTask = (task: TaskWithCategory, date: Date) => {
+      const key = date.toLocaleDateString("sv-SE");
       const list = map.get(key) ?? [];
       list.push({ type: "task", data: task });
       map.set(key, list);
+    };
+
+    // Cap expansion to 1 year from today to avoid unbounded maps for open-ended recurrences
+    const MAX_DATE = new Date();
+    MAX_DATE.setFullYear(MAX_DATE.getFullYear() + 1);
+
+    tasks.forEach((task) => {
+      if (!task.deadline) return;
+      const base = new Date(task.deadline);
+
+      if (!task.recurrence || task.recurrence === "none") {
+        addTask(task, base);
+        return;
+      }
+
+      const endDate = task.recurrenceEnd ? new Date(task.recurrenceEnd) : MAX_DATE;
+      const cur = new Date(base);
+      let count = 0;
+
+      while (cur <= endDate && cur <= MAX_DATE && count < 365) {
+        addTask(task, new Date(cur));
+        count++;
+        if (task.recurrence === "daily") cur.setDate(cur.getDate() + 1);
+        else if (task.recurrence === "weekly") cur.setDate(cur.getDate() + 7);
+        else if (task.recurrence === "monthly") cur.setMonth(cur.getMonth() + 1);
+        else break;
+      }
     });
 
     exams.forEach((exam) => {
