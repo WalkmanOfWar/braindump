@@ -25,6 +25,8 @@ model User {
   goals             Goal[]
   flashcardDecks    FlashcardDeck[]
   weeklyPlans       WeeklyPlan[]
+  energyCheckIns    EnergyCheckIn[]
+  shareToken        String?   @unique  // public stats share link
 }
 
 model Account {
@@ -173,9 +175,10 @@ model StudySession {
   hours         Float
   done          Boolean  @default(false)
   googleEventId String?
-  confidence    Int?     // 1–5 self-assessment after session
-  notes         String?  // "Co było najtrudniejsze?"
-  reflection    String?  // Feynman technique — explain in own words
+  confidence    Int?      // 1–5 self-assessment after session
+  nextReviewAt  DateTime? // Spaced Practice — next topic review date
+  notes         String?   // "Co było najtrudniejsze?"
+  reflection    String?   // Feynman technique — explain in own words
   exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
   quizzes       Quiz[]
 }
@@ -254,5 +257,17 @@ model WeeklyPlan {
   updatedAt  DateTime @updatedAt
 
   @@unique([userId, weekStart])
+  @@index([userId])
+}
+
+model EnergyCheckIn {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String   // "YYYY-MM-DD" — one per day per user
+  level     Int      // 1–5
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
   @@index([userId])
 }

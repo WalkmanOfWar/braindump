@@ -34,9 +34,13 @@ export async function POST(
 
   const { confidence, notes } = parsed.data;
 
+  // Spaced Practice SRS: schedule next topic review based on confidence
+  const REVIEW_DAYS: Record<number, number> = { 1: 1, 2: 3, 3: 7, 4: 14, 5: 30 };
+  const nextReviewAt = new Date(Date.now() + (REVIEW_DAYS[confidence] ?? 7) * 86_400_000);
+
   const updated = await prisma.studySession.update({
     where: { id: sessionId },
-    data: { confidence, notes: notes ?? null },
+    data: { confidence, notes: notes ?? null, nextReviewAt },
   });
 
   // Low confidence (≤2) → try to schedule a retry session
