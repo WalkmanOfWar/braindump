@@ -1170,17 +1170,6 @@ export default function CalendarPage() {
                 {selectedItem?.type === "task" ? "Szczegóły zadania" : "Szczegóły sesji"}
               </SheetTitle>
             </SheetHeader>
-            {selectedItem?.type === "task" && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0 gap-1.5"
-                onClick={() => handleEditTask(selectedItem.data)}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Edytuj
-              </Button>
-            )}
           </div>
 
           {selectedItem && (
@@ -1309,6 +1298,18 @@ export default function CalendarPage() {
                   </div>
                 </>
               )}
+            </div>
+          )}
+
+          {selectedItem?.type === "task" && (
+            <div className="px-6 py-4 border-t border-border">
+              <Button
+                className="w-full gap-2"
+                onClick={() => handleEditTask(selectedItem.data)}
+              >
+                <Pencil className="h-4 w-4" />
+                Edytuj zadanie
+              </Button>
             </div>
           )}
         </SheetContent>
