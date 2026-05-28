@@ -165,35 +165,30 @@ function computeEventPositions(
 
   BLOCK_SLOTS.forEach(({ hour, minute }, idx) => {
     (tasksBySlot.get(slotKey(hour, minute)) ?? []).forEach((task) => {
-      // Ensure every event is at least 1 slot tall so it's visible
+      // deadline = end of work; block extends BACKWARD by duration
       const durationSlots = Math.max(1, (task.estimatedMinutes ?? SLOT_MIN) / SLOT_MIN);
-      events.push({ task, slotIdx: idx, startSlot: idx, endSlot: idx + durationSlots });
+      events.push({ task, slotIdx: idx, startSlot: idx - durationSlots, endSlot: idx });
     });
   });
 
   if (events.length === 0) return [];
 
-  // Sort by start time; longer events first when start times are equal so they
-  // get the leftmost (highest-priority) column.
+  // Sort by start time; longer events first when start times are equal
   events.sort((a, b) =>
     a.startSlot !== b.startSlot ? a.startSlot - b.startSlot : b.endSlot - a.endSlot
   );
 
-  // Greedy column assignment: find the first column whose previous event has
-  // already ended before this event starts.
+  // Greedy column assignment
   const colAssign: number[] = [];
-  const colEnds: number[] = []; // endSlot of the last event placed in each column
+  const colEnds: number[] = [];
 
   for (let i = 0; i < events.length; i++) {
     let col = 0;
-    // +0.001 tolerance so events that share an exact boundary go in the same column
     while (col < colEnds.length && colEnds[col] > events[i].startSlot + 0.001) col++;
     colAssign[i] = col;
     colEnds[col] = events[i].endSlot;
   }
 
-  // For each event compute the total number of columns needed in its group —
-  // that is, 1 + the maximum column index of any event that overlaps with it.
   const colCount: number[] = events.map((ev, i) => {
     let max = colAssign[i];
     for (let j = 0; j < events.length; j++) {
@@ -208,16 +203,24 @@ function computeEventPositions(
     return max + 1;
   });
 
-  return events.map((ev, i) => ({
-    task: ev.task,
-    topPx: ev.slotIdx * SLOT_PX,
-    heightPx: Math.max(
+  return events.map((ev, i) => {
+    const rawHeight = Math.max(
       SLOT_PX,
       Math.round(((ev.task.estimatedMinutes ?? SLOT_MIN) / SLOT_MIN) * SLOT_PX)
-    ),
-    leftFrac: colAssign[i] / colCount[i],
-    widthFrac: 1 / colCount[i],
-  }));
+    );
+    // Block ends at the deadline slot; clip top if it would go above the grid
+    const rawTop = ev.startSlot * SLOT_PX;
+    const topPx = Math.max(0, rawTop);
+    const heightPx = rawHeight + Math.min(0, rawTop); // reduce height if clipped at top
+
+    return {
+      task: ev.task,
+      topPx,
+      heightPx: Math.max(SLOT_PX / 2, heightPx),
+      leftFrac: colAssign[i] / colCount[i],
+      widthFrac: 1 / colCount[i],
+    };
+  });
 }
 
 function DraggableTaskCard({
