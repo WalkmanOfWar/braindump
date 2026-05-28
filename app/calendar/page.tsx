@@ -988,7 +988,7 @@ export default function CalendarPage() {
         description: taskData.description,
         deadline: taskData.deadline?.toISOString(),
         priority: taskData.priority,
-        categoryId: taskData.categoryId ?? null,
+        categoryId: taskData.categoryId || null,
         recurrence: taskData.recurrence,
         recurrenceEnd: taskData.recurrenceEnd?.toISOString(),
         subtasks: taskData.subtasks,
