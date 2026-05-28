@@ -346,7 +346,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1 hover:shadow-sm transition-shadow">
             <div className="flex items-center gap-2">
               <ListTodo className="h-4 w-4 text-primary" />
@@ -383,7 +383,7 @@ export default function DashboardPage() {
           </a>
           <button
             onClick={() => setEnergyOpen(true)}
-            className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1 hover:shadow-sm transition-shadow text-left"
+            className="col-span-2 sm:col-span-1 bg-card border border-border rounded-xl p-4 flex flex-col gap-1 hover:shadow-sm transition-shadow text-left"
           >
             <div className="flex items-center gap-2">
               <span className="text-base leading-none">
