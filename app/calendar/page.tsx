@@ -54,6 +54,18 @@ type ViewMode = "week" | "month" | "blocks";
 
 const DAYS_PL = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
 
+const MS_PER_DAY = 86_400_000 as const;
+/** Number of cells in the month grid (6 weeks × 7 days). */
+const MONTH_GRID_CELLS = 42 as const;
+/** Default hour assigned to a dropped task that had no prior deadline time. */
+const DEFAULT_DROP_HOUR = 9 as const;
+/** Max recurrence occurrences expanded per task (caps open-ended series). */
+const MAX_RECURRENCE_EXPANSIONS = 365 as const;
+/** Max event chips shown per day cell in month view before "+N more" label. */
+const MONTH_CELL_MAX_VISIBLE = 2 as const;
+/** Max unscheduled tasks shown in the blocks-view sidebar. */
+const UNSCHEDULED_SIDEBAR_LIMIT = 10 as const;
+
 // Half-hour slots for time-blocks view (8:00 – 23:30 in 30-min steps)
 const BLOCK_SLOTS: { hour: number; minute: number }[] = (() => {
   const slots: { hour: number; minute: number }[] = [];
@@ -78,7 +90,7 @@ function getMonthGridDays(date: Date): Date[] {
   const offset = dow === 0 ? -6 : 1 - dow;
   const gridStart = new Date(monthStart);
   gridStart.setDate(monthStart.getDate() + offset);
-  return Array.from({ length: 42 }, (_, i) => {
+  return Array.from({ length: MONTH_GRID_CELLS }, (_, i) => {
     const d = new Date(gridStart);
     d.setDate(gridStart.getDate() + i);
     return d;
@@ -511,7 +523,7 @@ function MonthCell({
 
       {/* Event pills */}
       <div className="space-y-1">
-        {items.slice(0, 2).map((item, j) =>
+        {items.slice(0, MONTH_CELL_MAX_VISIBLE).map((item, j) =>
           item.type === "task" ? (
             <DraggableTaskChip
               key={`mc-task-${item.data.id}-${j}`}
@@ -532,9 +544,9 @@ function MonthCell({
             </button>
           )
         )}
-        {items.length > 2 && (
+        {items.length > MONTH_CELL_MAX_VISIBLE && (
           <p className="text-[10px] text-muted-foreground px-0.5 font-medium">
-            +{items.length - 2}
+            +{items.length - MONTH_CELL_MAX_VISIBLE}
           </p>
         )}
       </div>
@@ -610,7 +622,7 @@ function TimeBlocksView({
         const target = new Date(dateKey);
         const end = task.recurrenceEnd ? new Date(task.recurrenceEnd) : null;
         if (target >= base && (!end || target <= end)) {
-          const diffDays = Math.round((target.getTime() - base.getTime()) / 86400000);
+          const diffDays = Math.round((target.getTime() - base.getTime()) / MS_PER_DAY);
           if (task.recurrence === "daily") appearsOnDate = true;
           else if (task.recurrence === "weekly" && diffDays % 7 === 0) appearsOnDate = true;
           else if (task.recurrence === "monthly" && target.getDate() === base.getDate()) appearsOnDate = true;
@@ -640,7 +652,7 @@ function TimeBlocksView({
   );
 
   // Tasks with no deadline, shown in an "unscheduled" panel
-  const unscheduled = tasks.filter(t => !t.deadline && !t.done).slice(0, 10);
+  const unscheduled = tasks.filter(t => !t.deadline && !t.done).slice(0, UNSCHEDULED_SIDEBAR_LIMIT);
 
   return (
     <div className="flex gap-4">
@@ -855,7 +867,7 @@ export default function CalendarPage() {
       const cur = new Date(base);
       let count = 0;
 
-      while (cur <= endDate && cur <= MAX_DATE && count < 365) {
+      while (cur <= endDate && cur <= MAX_DATE && count < MAX_RECURRENCE_EXPANSIONS) {
         addTask(task, new Date(cur));
         count++;
         if (task.recurrence === "daily") cur.setDate(cur.getDate() + 1);
@@ -932,7 +944,7 @@ export default function CalendarPage() {
         const existing = new Date(task.deadline);
         newDeadline.setHours(existing.getHours(), existing.getMinutes(), 0, 0);
       } else {
-        newDeadline.setHours(9, 0, 0, 0);
+        newDeadline.setHours(DEFAULT_DROP_HOUR, 0, 0, 0);
       }
     }
 

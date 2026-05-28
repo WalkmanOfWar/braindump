@@ -19,27 +19,42 @@ export const STATE_REVIEW     = 2 as const;
 export const STATE_RELEARNING = 3 as const;
 
 export interface FSRSCard {
-  stability: number;
-  difficulty: number;
-  elapsedDays: number;
+  stability:     number;
+  difficulty:    number;
+  elapsedDays:   number;
   scheduledDays: number;
-  reps: number;
-  lapses: number;
-  state: number;
-  due: Date;
+  reps:          number;
+  lapses:        number;
+  state:         number;
+  due:           Date;
 }
 
-// Default FSRS-4.5 weights (w[0..16])
+// ── Timing constants ─────────────────────────────────────────────────────────
+const MS_PER_DAY     = 86_400_000 as const;
+const MS_PER_MINUTE  = 60_000     as const;
+/** Delay for "Again" rating while in Learning / Relearning state (1 min). */
+const AGAIN_DELAY_MS = 1  * MS_PER_MINUTE;
+/** Delay for "Hard" rating while in Learning / Relearning state (5 min). */
+const HARD_DELAY_MS  = 5  * MS_PER_MINUTE;
+/** Delay for "Good" rating while in Learning state (10 min). */
+const GOOD_DELAY_MS  = 10 * MS_PER_MINUTE;
+/** Easy-bonus multiplier applied to the interval when graduating from Learning. */
+const EASY_GRADUATE_MULTIPLIER = 2 as const;
+
+// ── Default FSRS-4.5 weights (w[0..16]) ─────────────────────────────────────
 const W = [
-  0.4072, 1.1829, 3.1262, 15.4722,  // w0-w3: init stability per rating
-  7.2102, 0.5316, 1.0651,  0.6593,  // w4-w7
-  1.5330, 0.1544, 1.0071,  1.9395,  // w8-w11
-  0.1100, 0.2900, 2.2700,  0.0000,  // w12-w15 (w15 unused placeholder)
-  2.9898,                            // w16
+  0.4072, 1.1829,  3.1262, 15.4722,  // w0-w3: init stability per rating
+  7.2102, 0.5316,  1.0651,  0.6593,  // w4-w7
+  1.5330, 0.1544,  1.0071,  1.9395,  // w8-w11
+  0.1100, 0.2900,  2.2700,  0.0000,  // w12-w15 (w15 unused placeholder)
+  2.9898,                             // w16
 ];
 
+/** Fallback hard-penalty when w[15] is the unused zero placeholder. */
+const HARD_PENALTY_FALLBACK = 0.5 as const;
+
 const TARGET_RETENTION = 0.9;
-const DECAY = -0.5;
+const DECAY  = -0.5;
 const FACTOR = Math.pow(0.9, 1 / DECAY) - 1; // ≈ 19/81
 
 /** Initial stability for a brand-new card given the first rating. */
@@ -60,8 +75,8 @@ export function nextInterval(stability: number): number {
 
 /** Updated stability after a successful recall (state=Review). */
 function nextStability(d: number, s: number, r: number, rating: Rating): number {
-  const hardPenalty = rating === RATING_HARD ? W[15] ?? 0.5 : 1;
-  const easyBonus   = rating === RATING_EASY ? W[16]         : 1;
+  const hardPenalty = rating === RATING_HARD ? (W[15] ?? HARD_PENALTY_FALLBACK) : 1;
+  const easyBonus   = rating === RATING_EASY ? W[16] : 1;
   return (
     s *
     (Math.exp(W[8]) *
@@ -91,30 +106,30 @@ function retrievability(elapsedDays: number, stability: number): number {
  * Returns a new FSRSCard object (pure function — does not mutate input).
  */
 export function scheduleCard(card: FSRSCard, rating: Rating, now: Date = new Date()): FSRSCard {
-  const next = { ...card };
-  const elapsed = Math.max(0, Math.round((now.getTime() - card.due.getTime()) / 86_400_000));
+  const next    = { ...card };
+  const elapsed = Math.max(0, Math.round((now.getTime() - card.due.getTime()) / MS_PER_DAY));
 
   next.reps += 1;
 
   switch (card.state) {
     case STATE_NEW: {
-      next.stability  = initStability(rating);
-      next.difficulty = initDifficulty(rating);
+      next.stability   = initStability(rating);
+      next.difficulty  = initDifficulty(rating);
       next.elapsedDays = 0;
 
       if (rating === RATING_AGAIN) {
         // Stay in Learning, review again in 1 min (represented as same-day)
         next.state         = STATE_LEARNING;
         next.scheduledDays = 0;
-        next.due           = new Date(now.getTime() + 60_000); // 1 minute
+        next.due           = new Date(now.getTime() + AGAIN_DELAY_MS);
       } else if (rating === RATING_HARD) {
         next.state         = STATE_LEARNING;
         next.scheduledDays = 0;
-        next.due           = new Date(now.getTime() + 5 * 60_000); // 5 minutes
+        next.due           = new Date(now.getTime() + HARD_DELAY_MS);
       } else if (rating === RATING_GOOD) {
         next.state         = STATE_LEARNING;
         next.scheduledDays = 0;
-        next.due           = new Date(now.getTime() + 10 * 60_000); // 10 minutes
+        next.due           = new Date(now.getTime() + GOOD_DELAY_MS);
       } else {
         // Easy — graduate directly to Review
         next.state         = STATE_REVIEW;
@@ -131,11 +146,11 @@ export function scheduleCard(card: FSRSCard, rating: Rating, now: Date = new Dat
       if (rating === RATING_AGAIN) {
         next.state         = card.state; // stay
         next.scheduledDays = 0;
-        next.due           = new Date(now.getTime() + 60_000);
+        next.due           = new Date(now.getTime() + AGAIN_DELAY_MS);
       } else if (rating === RATING_HARD) {
         next.state         = card.state;
         next.scheduledDays = 0;
-        next.due           = new Date(now.getTime() + 5 * 60_000);
+        next.due           = new Date(now.getTime() + HARD_DELAY_MS);
       } else if (rating === RATING_GOOD) {
         // Graduate to Review
         next.state         = STATE_REVIEW;
@@ -146,7 +161,7 @@ export function scheduleCard(card: FSRSCard, rating: Rating, now: Date = new Dat
       } else {
         // Easy — graduate with bonus
         next.state         = STATE_REVIEW;
-        next.scheduledDays = Math.max(1, nextInterval(next.stability) * 2);
+        next.scheduledDays = Math.max(1, nextInterval(next.stability) * EASY_GRADUATE_MULTIPLIER);
         const dueDate      = new Date(now);
         dueDate.setDate(dueDate.getDate() + next.scheduledDays);
         next.due = dueDate;
@@ -155,23 +170,26 @@ export function scheduleCard(card: FSRSCard, rating: Rating, now: Date = new Dat
     }
 
     case STATE_REVIEW: {
-      const r = retrievability(elapsed, card.stability);
+      const retrievabilityScore = retrievability(elapsed, card.stability);
       next.elapsedDays = elapsed;
 
       if (rating === RATING_AGAIN) {
         next.lapses    += 1;
         next.state      = STATE_RELEARNING;
         // Reset stability for relearning (use w[11] as "forget stability")
-        next.stability  = Math.max(W[11] * Math.pow(card.difficulty, -W[12]) * (Math.pow(card.stability + 1, W[13]) - 1), 0.1);
-        next.difficulty = nextDifficulty(card.difficulty, rating);
+        next.stability  = Math.max(
+          W[11] * Math.pow(card.difficulty, -W[12]) * (Math.pow(card.stability + 1, W[13]) - 1),
+          0.1
+        );
+        next.difficulty    = nextDifficulty(card.difficulty, rating);
         next.scheduledDays = 0;
-        next.due        = new Date(now.getTime() + 60_000);
+        next.due           = new Date(now.getTime() + AGAIN_DELAY_MS);
       } else {
-        next.stability  = nextStability(card.difficulty, card.stability, r, rating);
-        next.difficulty = nextDifficulty(card.difficulty, rating);
-        next.state      = STATE_REVIEW;
+        next.stability     = nextStability(card.difficulty, card.stability, retrievabilityScore, rating);
+        next.difficulty    = nextDifficulty(card.difficulty, rating);
+        next.state         = STATE_REVIEW;
         next.scheduledDays = nextInterval(next.stability);
-        const dueDate   = new Date(now);
+        const dueDate      = new Date(now);
         dueDate.setDate(dueDate.getDate() + next.scheduledDays);
         next.due = dueDate;
       }
@@ -189,9 +207,9 @@ export function getDueCount(cards: { due: Date }[], now: Date = new Date()): num
 
 /** Human-readable label for how long until next review. */
 export function formatNextInterval(scheduledDays: number): string {
-  if (scheduledDays === 0) return "za chwilę";
-  if (scheduledDays === 1) return "jutro";
-  if (scheduledDays < 7)  return `za ${scheduledDays} dni`;
-  if (scheduledDays < 30) return `za ${Math.round(scheduledDays / 7)} tyg.`;
+  if (scheduledDays === 0)  return "za chwilę";
+  if (scheduledDays === 1)  return "jutro";
+  if (scheduledDays < 7)   return `za ${scheduledDays} dni`;
+  if (scheduledDays < 30)  return `za ${Math.round(scheduledDays / 7)} tyg.`;
   return `za ${Math.round(scheduledDays / 30)} mies.`;
 }
