@@ -10,7 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
+import { cn, toUiTask } from "@/lib/utils";
 import {
   ChevronLeft,
   ChevronRight,
@@ -23,9 +23,11 @@ import {
   AlignLeft,
   Tag,
   GripVertical,
+  Pencil,
 } from "lucide-react";
-import type { TaskWithCategory, ExamWithSessions } from "@/types";
+import type { TaskWithCategory, ExamWithSessions, Category, UiTask } from "@/types";
 import type { StudySession } from "@prisma/client";
+import { TaskModal } from "@/components/task-modal";
 import {
   DndContext,
   DragEndEvent,
@@ -765,17 +767,22 @@ export default function CalendarPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [tasks, setTasks] = useState<TaskWithCategory[]>([]);
   const [exams, setExams] = useState<ExamWithSessions[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<UiTask | null>(null);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const [tasksRes, examsRes] = await Promise.all([
+    const [tasksRes, examsRes, catsRes] = await Promise.all([
       fetch("/api/tasks"),
       fetch("/api/exams"),
+      fetch("/api/categories"),
     ]);
     if (tasksRes.ok) setTasks(await tasksRes.json());
     if (examsRes.ok) setExams(await examsRes.json());
+    if (catsRes.ok) setCategories(await catsRes.json());
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -965,6 +972,40 @@ export default function CalendarPage() {
     setSheetOpen(true);
   };
 
+  const handleEditTask = (task: TaskWithCategory) => {
+    setEditingTask(toUiTask(task));
+    setSheetOpen(false);
+    setTaskModalOpen(true);
+  };
+
+  const handleSaveTask = async (taskData: Partial<UiTask>) => {
+    if (!taskData.id) return;
+    const res = await fetch(`/api/tasks/${taskData.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: taskData.title,
+        description: taskData.description,
+        deadline: taskData.deadline?.toISOString(),
+        priority: taskData.priority,
+        categoryId: taskData.categoryId ?? null,
+        recurrence: taskData.recurrence,
+        recurrenceEnd: taskData.recurrenceEnd?.toISOString(),
+        subtasks: taskData.subtasks,
+        estimatedMinutes: taskData.estimatedMinutes ?? null,
+      }),
+    });
+    if (res.ok) {
+      const updated: TaskWithCategory = await res.json();
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      setSelectedItem({ type: "task", data: updated });
+      toast.success("Zadanie zaktualizowane");
+    } else {
+      toast.error("Nie udało się zaktualizować zadania");
+    }
+    setEditingTask(null);
+  };
+
   const activeTask = activeTaskId ? tasks.find((t) => t.id === activeTaskId.split("@")[0]) ?? null : null;
 
   return (
@@ -1117,11 +1158,22 @@ export default function CalendarPage() {
                 ? <CheckSquare className="h-4 w-4" />
                 : <BookOpen className="h-4 w-4" />}
             </div>
-            <SheetHeader className="p-0 text-left">
+            <SheetHeader className="p-0 text-left flex-1">
               <SheetTitle className="text-base">
                 {selectedItem?.type === "task" ? "Szczegóły zadania" : "Szczegóły sesji"}
               </SheetTitle>
             </SheetHeader>
+            {selectedItem?.type === "task" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1.5"
+                onClick={() => handleEditTask(selectedItem.data)}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Edytuj
+              </Button>
+            )}
           </div>
 
           {selectedItem && (
@@ -1254,6 +1306,15 @@ export default function CalendarPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      <TaskModal
+        open={taskModalOpen}
+        onOpenChange={setTaskModalOpen}
+        task={editingTask}
+        categories={categories}
+        onSave={handleSaveTask}
+        onCategoryCreated={(cat) => setCategories((prev) => [...prev, cat])}
+      />
     </div>
   );
 }

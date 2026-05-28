@@ -213,12 +213,9 @@ lib/
 
 | Ścieżka                         |   Harmonogram | Cel                                                    |
 | ------------------------------- | ------------: | ------------------------------------------------------ |
-| `/api/cron/reminders`           |   `0 8 * * *` | przypomnienia o deadline'ach                           |
-| `/api/cron/habit-reminders`     |  `0 19 * * *` | wpis historyczny w configu; route obecnie nie istnieje |
-| `/api/cron/weekly-review-nudge` |  `0 18 * * 0` | zachęta do przeglądu tygodnia                          |
-| `/api/cron/sleep-consolidation` | `30 21 * * *` | wieczorna konsolidacja materiału                       |
-
-Przed deployem warto usunąć albo przywrócić `/api/cron/habit-reminders`, żeby konfiguracja Vercel nie wskazywała nieistniejącego endpointu.
+| `/api/cron/reminders`           |   `0 8 * * *` | przypomnienia o deadline'ach     |
+| `/api/cron/weekly-review-nudge` |  `0 18 * * 0` | zachęta do przeglądu tygodnia    |
+| `/api/cron/sleep-consolidation` | `30 21 * * *` | wieczorna konsolidacja materiału |
 
 ---
 
