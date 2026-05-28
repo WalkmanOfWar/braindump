@@ -165,9 +165,14 @@ function computeEventPositions(
 
   BLOCK_SLOTS.forEach(({ hour, minute }, idx) => {
     (tasksBySlot.get(slotKey(hour, minute)) ?? []).forEach((task) => {
-      // deadline = end of work; block extends BACKWARD by duration
-      const durationSlots = Math.max(1, (task.estimatedMinutes ?? SLOT_MIN) / SLOT_MIN);
-      events.push({ task, slotIdx: idx, startSlot: idx - durationSlots, endSlot: idx });
+      if (task.estimatedMinutes) {
+        // Estimated duration set → block extends BACKWARD from deadline
+        const durationSlots = task.estimatedMinutes / SLOT_MIN;
+        events.push({ task, slotIdx: idx, startSlot: idx - durationSlots, endSlot: idx });
+      } else {
+        // No estimate → show a 1-slot marker AT the deadline (forward)
+        events.push({ task, slotIdx: idx, startSlot: idx, endSlot: idx + 1 });
+      }
     });
   });
 
