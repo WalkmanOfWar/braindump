@@ -54,13 +54,12 @@ type ViewMode = "week" | "month" | "blocks";
 
 const DAYS_PL = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
 
-// Half-hour slots for time-blocks view (8:00 – 22:00 in 30-min steps)
-// Each entry is { hour, minute } so we can show 8:00, 8:30, 9:00...
+// Half-hour slots for time-blocks view (8:00 – 23:30 in 30-min steps)
 const BLOCK_SLOTS: { hour: number; minute: number }[] = (() => {
   const slots: { hour: number; minute: number }[] = [];
-  for (let h = 8; h <= 22; h++) {
+  for (let h = 8; h <= 23; h++) {
     slots.push({ hour: h, minute: 0 });
-    if (h < 22) slots.push({ hour: h, minute: 30 });
+    slots.push({ hour: h, minute: 30 });
   }
   return slots;
 })();
