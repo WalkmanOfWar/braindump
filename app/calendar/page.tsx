@@ -134,15 +134,6 @@ function formatDuration(minutes: number): string {
 // Google Calendar-style overlap layout
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Returns "#ffffff" or "#1a1a1a" based on the luminance of a hex color. */
-function getContrastColor(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum > 0.55 ? "#1a1a1a" : "#ffffff";
-}
-
 interface PositionedEvent {
   task: TaskWithCategory;
   topPx: number;
@@ -543,74 +534,6 @@ function MonthCell({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Time blocks view — Google Calendar-style event block
-// ─────────────────────────────────────────────────────────────────────────────
-
-function BlocksEventCard({
-  task,
-  heightPx,
-  onOpen,
-}: {
-  task: TaskWithCategory;
-  heightPx: number;
-  onOpen: () => void;
-}) {
-  const color = task.category?.color ?? "#7c5cff";
-  const fg = getContrastColor(color);
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: task.id,
-    data: { task },
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className="h-full w-full rounded-md overflow-hidden touch-none cursor-grab active:cursor-grabbing flex flex-col px-2 py-1 gap-0.5 select-none"
-      style={{
-        backgroundColor: color,
-        boxShadow: `inset 0 0 0 1px rgba(0,0,0,0.12)`,
-        opacity: isDragging ? 0 : 1,
-      }}
-    >
-      {/* Title — click opens detail sheet */}
-      <div
-        role="button"
-        tabIndex={0}
-        className={cn(
-          "text-[11px] font-semibold leading-snug break-words line-clamp-2",
-          task.done && "line-through opacity-60"
-        )}
-        style={{ color: fg }}
-        onClick={(e) => { e.stopPropagation(); if (!isDragging) onOpen(); }}
-        onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}
-      >
-        {task.title}
-      </div>
-
-      {/* Duration — only when the block is tall enough */}
-      {heightPx > SLOT_PX && task.estimatedMinutes && (
-        <span
-          className="text-[10px] leading-tight shrink-0"
-          style={{ color: `${fg}b3` }}   /* 70 % opacity */
-        >
-          {formatDuration(task.estimatedMinutes)}
-        </span>
-      )}
-
-      {/* Completion checkmark */}
-      {task.done && (
-        <CheckCircle2
-          className="w-3 h-3 mt-auto shrink-0"
-          style={{ color: `${fg}99` }}
-        />
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Time blocks view — hour-slot droppable rows
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -778,10 +701,11 @@ function TimeBlocksView({
                   zIndex: 10,
                 }}
               >
-                <BlocksEventCard
+                <DraggableTaskCard
                   task={task}
-                  heightPx={heightPx}
+                  durationMinutes={task.estimatedMinutes ?? undefined}
                   onOpen={() => onOpenItem({ type: "task", data: task })}
+                  className="h-full"
                 />
               </div>
             ))}
