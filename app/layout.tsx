@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import { SessionProvider } from "@/components/session-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ServiceWorkerRegistration } from "@/components/sw-register";
@@ -47,13 +48,17 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const cookieStore = await cookies();
+  const rawTheme = cookieStore.get("theme")?.value;
+  const savedTheme = rawTheme === "light" || rawTheme === "dark" ? rawTheme : "system";
+
   return (
     <html lang="pl" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning data-scroll-behavior="smooth">
       <body className="font-sans antialiased bg-background">
-        <ThemeProvider>
+        <ThemeProvider defaultTheme={savedTheme}>
           <SessionProvider>
             <PomodoroProvider>
               <FocusModeProvider>

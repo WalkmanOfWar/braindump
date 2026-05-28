@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { TopNavbar } from "@/components/top-navbar";
 import { BottomNav } from "@/components/bottom-nav";
 import { ExamCard } from "@/components/exam-card";
@@ -8,6 +9,7 @@ import { ExamModal } from "@/components/exam-modal";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, GraduationCap } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import type { ExamWithSessions } from "@/types";
 import type { Category } from "@/types";
@@ -22,6 +24,8 @@ export default function ExamsPage() {
   const [editingExam, setEditingExam] = useState<ExamWithSessions | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterTab, setFilterTab] = useState<FilterTab>("active");
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const fetchData = useCallback(async () => {
     const [examsRes, catsRes] = await Promise.all([
@@ -36,6 +40,15 @@ export default function ExamsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Auto-open create modal when navigated from command palette (?new=1)
+  useEffect(() => {
+    if (searchParams.get("new") === "1" && !loading) {
+      setEditingExam(null);
+      setModalOpen(true);
+      router.replace("/exams");
+    }
+  }, [searchParams, loading, router]);
 
   const handleToggleSession = async (
     examId: string,
@@ -161,28 +174,20 @@ export default function ExamsPage() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-4">
-              <GraduationCap className="w-10 h-10 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              {filterTab === "active" ? "Brak nadchodzących egzaminów" : "Brak przeszłych egzaminów"}
-            </h3>
-            {filterTab === "active" && (
-              <>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Dodaj egzamin i wygeneruj plan nauki!
-                </p>
-                <Button
-                  onClick={() => { setEditingExam(null); setModalOpen(true); }}
-                  className="bg-accent text-accent-foreground hover:bg-accent/90"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Dodaj egzamin
-                </Button>
-              </>
-            )}
-          </div>
+          <EmptyState
+            emoji={filterTab === "active" ? "🎓" : "📖"}
+            title={filterTab === "active" ? "Brak nadchodzących egzaminów" : "Brak przeszłych egzaminów"}
+            description={
+              filterTab === "active"
+                ? "Dodaj egzamin i wygeneruj spersonalizowany plan nauki!"
+                : "Jeszcze nie masz ukończonych egzaminów."
+            }
+            action={
+              filterTab === "active"
+                ? { label: "Dodaj egzamin", onClick: () => { setEditingExam(null); setModalOpen(true); } }
+                : undefined
+            }
+          />
         )}
       </main>
 

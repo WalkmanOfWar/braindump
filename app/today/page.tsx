@@ -162,6 +162,26 @@ export default function TodayPage() {
     }
   };
 
+  const handleSkipOccurrence = async (id: string) => {
+    const res = await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skipOccurrence: true }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.deleted) {
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+        toast.success("Seria zakończona — brak kolejnych instancji");
+      } else {
+        setTasks((prev) => prev.map((t) => (t.id === id ? data : t)));
+        toast.success("Instancja pominięta");
+      }
+    } else {
+      toast.error("Nie udało się pominąć instancji");
+    }
+  };
+
   const handleSyncCalendar = useCalendarSync(setTasks);
 
   useDeadlineReminders(tasks);
@@ -319,6 +339,7 @@ export default function TodayPage() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onSyncCalendar={handleSyncCalendar}
+                  onSkipOccurrence={handleSkipOccurrence}
                 />
               ))}
             </div>
@@ -347,6 +368,7 @@ export default function TodayPage() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onSyncCalendar={handleSyncCalendar}
+                  onSkipOccurrence={handleSkipOccurrence}
                 />
               ))}
             </div>
@@ -442,6 +464,7 @@ export default function TodayPage() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onSyncCalendar={handleSyncCalendar}
+                  onSkipOccurrence={handleSkipOccurrence}
                 />
               ))}
             </div>
