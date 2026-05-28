@@ -10,7 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
+import { cn, toUiTask } from "@/lib/utils";
 import {
   ChevronLeft,
   ChevronRight,
@@ -23,9 +23,11 @@ import {
   AlignLeft,
   Tag,
   GripVertical,
+  Pencil,
 } from "lucide-react";
-import type { TaskWithCategory, ExamWithSessions } from "@/types";
+import type { TaskWithCategory, ExamWithSessions, Category, UiTask } from "@/types";
 import type { StudySession } from "@prisma/client";
+import { TaskModal } from "@/components/task-modal";
 import {
   DndContext,
   DragEndEvent,
@@ -52,13 +54,24 @@ type ViewMode = "week" | "month" | "blocks";
 
 const DAYS_PL = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
 
-// Half-hour slots for time-blocks view (8:00 – 22:00 in 30-min steps)
-// Each entry is { hour, minute } so we can show 8:00, 8:30, 9:00...
+const MS_PER_DAY = 86_400_000 as const;
+/** Number of cells in the month grid (6 weeks × 7 days). */
+const MONTH_GRID_CELLS = 42 as const;
+/** Default hour assigned to a dropped task that had no prior deadline time. */
+const DEFAULT_DROP_HOUR = 9 as const;
+/** Max recurrence occurrences expanded per task (caps open-ended series). */
+const MAX_RECURRENCE_EXPANSIONS = 365 as const;
+/** Max event chips shown per day cell in month view before "+N more" label. */
+const MONTH_CELL_MAX_VISIBLE = 2 as const;
+/** Max unscheduled tasks shown in the blocks-view sidebar. */
+const UNSCHEDULED_SIDEBAR_LIMIT = 10 as const;
+
+// Half-hour slots for time-blocks view (8:00 – 23:30 in 30-min steps)
 const BLOCK_SLOTS: { hour: number; minute: number }[] = (() => {
   const slots: { hour: number; minute: number }[] = [];
-  for (let h = 8; h <= 22; h++) {
+  for (let h = 8; h <= 23; h++) {
     slots.push({ hour: h, minute: 0 });
-    if (h < 22) slots.push({ hour: h, minute: 30 });
+    slots.push({ hour: h, minute: 30 });
   }
   return slots;
 })();
@@ -77,7 +90,7 @@ function getMonthGridDays(date: Date): Date[] {
   const offset = dow === 0 ? -6 : 1 - dow;
   const gridStart = new Date(monthStart);
   gridStart.setDate(monthStart.getDate() + offset);
-  return Array.from({ length: 42 }, (_, i) => {
+  return Array.from({ length: MONTH_GRID_CELLS }, (_, i) => {
     const d = new Date(gridStart);
     d.setDate(gridStart.getDate() + i);
     return d;
@@ -163,35 +176,35 @@ function computeEventPositions(
 
   BLOCK_SLOTS.forEach(({ hour, minute }, idx) => {
     (tasksBySlot.get(slotKey(hour, minute)) ?? []).forEach((task) => {
-      // Ensure every event is at least 1 slot tall so it's visible
-      const durationSlots = Math.max(1, (task.estimatedMinutes ?? SLOT_MIN) / SLOT_MIN);
-      events.push({ task, slotIdx: idx, startSlot: idx, endSlot: idx + durationSlots });
+      if (task.estimatedMinutes) {
+        // Estimated duration set → block extends BACKWARD from deadline
+        const durationSlots = task.estimatedMinutes / SLOT_MIN;
+        events.push({ task, slotIdx: idx, startSlot: idx - durationSlots, endSlot: idx });
+      } else {
+        // No estimate → show a 1-slot marker AT the deadline (forward)
+        events.push({ task, slotIdx: idx, startSlot: idx, endSlot: idx + 1 });
+      }
     });
   });
 
   if (events.length === 0) return [];
 
-  // Sort by start time; longer events first when start times are equal so they
-  // get the leftmost (highest-priority) column.
+  // Sort by start time; longer events first when start times are equal
   events.sort((a, b) =>
     a.startSlot !== b.startSlot ? a.startSlot - b.startSlot : b.endSlot - a.endSlot
   );
 
-  // Greedy column assignment: find the first column whose previous event has
-  // already ended before this event starts.
+  // Greedy column assignment
   const colAssign: number[] = [];
-  const colEnds: number[] = []; // endSlot of the last event placed in each column
+  const colEnds: number[] = [];
 
   for (let i = 0; i < events.length; i++) {
     let col = 0;
-    // +0.001 tolerance so events that share an exact boundary go in the same column
     while (col < colEnds.length && colEnds[col] > events[i].startSlot + 0.001) col++;
     colAssign[i] = col;
     colEnds[col] = events[i].endSlot;
   }
 
-  // For each event compute the total number of columns needed in its group —
-  // that is, 1 + the maximum column index of any event that overlaps with it.
   const colCount: number[] = events.map((ev, i) => {
     let max = colAssign[i];
     for (let j = 0; j < events.length; j++) {
@@ -206,16 +219,24 @@ function computeEventPositions(
     return max + 1;
   });
 
-  return events.map((ev, i) => ({
-    task: ev.task,
-    topPx: ev.slotIdx * SLOT_PX,
-    heightPx: Math.max(
+  return events.map((ev, i) => {
+    const rawHeight = Math.max(
       SLOT_PX,
       Math.round(((ev.task.estimatedMinutes ?? SLOT_MIN) / SLOT_MIN) * SLOT_PX)
-    ),
-    leftFrac: colAssign[i] / colCount[i],
-    widthFrac: 1 / colCount[i],
-  }));
+    );
+    // Block ends at the deadline slot; clip top if it would go above the grid
+    const rawTop = ev.startSlot * SLOT_PX;
+    const topPx = Math.max(0, rawTop);
+    const heightPx = rawHeight + Math.min(0, rawTop); // reduce height if clipped at top
+
+    return {
+      task: ev.task,
+      topPx,
+      heightPx: Math.max(SLOT_PX / 2, heightPx),
+      leftFrac: colAssign[i] / colCount[i],
+      widthFrac: 1 / colCount[i],
+    };
+  });
 }
 
 function DraggableTaskCard({
@@ -502,7 +523,7 @@ function MonthCell({
 
       {/* Event pills */}
       <div className="space-y-1">
-        {items.slice(0, 2).map((item, j) =>
+        {items.slice(0, MONTH_CELL_MAX_VISIBLE).map((item, j) =>
           item.type === "task" ? (
             <DraggableTaskChip
               key={`mc-task-${item.data.id}-${j}`}
@@ -523,9 +544,9 @@ function MonthCell({
             </button>
           )
         )}
-        {items.length > 2 && (
+        {items.length > MONTH_CELL_MAX_VISIBLE && (
           <p className="text-[10px] text-muted-foreground px-0.5 font-medium">
-            +{items.length - 2}
+            +{items.length - MONTH_CELL_MAX_VISIBLE}
           </p>
         )}
       </div>
@@ -601,7 +622,7 @@ function TimeBlocksView({
         const target = new Date(dateKey);
         const end = task.recurrenceEnd ? new Date(task.recurrenceEnd) : null;
         if (target >= base && (!end || target <= end)) {
-          const diffDays = Math.round((target.getTime() - base.getTime()) / 86400000);
+          const diffDays = Math.round((target.getTime() - base.getTime()) / MS_PER_DAY);
           if (task.recurrence === "daily") appearsOnDate = true;
           else if (task.recurrence === "weekly" && diffDays % 7 === 0) appearsOnDate = true;
           else if (task.recurrence === "monthly" && target.getDate() === base.getDate()) appearsOnDate = true;
@@ -631,7 +652,7 @@ function TimeBlocksView({
   );
 
   // Tasks with no deadline, shown in an "unscheduled" panel
-  const unscheduled = tasks.filter(t => !t.deadline && !t.done).slice(0, 10);
+  const unscheduled = tasks.filter(t => !t.deadline && !t.done).slice(0, UNSCHEDULED_SIDEBAR_LIMIT);
 
   return (
     <div className="flex gap-4">
@@ -765,17 +786,22 @@ export default function CalendarPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [tasks, setTasks] = useState<TaskWithCategory[]>([]);
   const [exams, setExams] = useState<ExamWithSessions[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<UiTask | null>(null);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const [tasksRes, examsRes] = await Promise.all([
+    const [tasksRes, examsRes, catsRes] = await Promise.all([
       fetch("/api/tasks"),
       fetch("/api/exams"),
+      fetch("/api/categories"),
     ]);
     if (tasksRes.ok) setTasks(await tasksRes.json());
     if (examsRes.ok) setExams(await examsRes.json());
+    if (catsRes.ok) setCategories(await catsRes.json());
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -841,7 +867,7 @@ export default function CalendarPage() {
       const cur = new Date(base);
       let count = 0;
 
-      while (cur <= endDate && cur <= MAX_DATE && count < 365) {
+      while (cur <= endDate && cur <= MAX_DATE && count < MAX_RECURRENCE_EXPANSIONS) {
         addTask(task, new Date(cur));
         count++;
         if (task.recurrence === "daily") cur.setDate(cur.getDate() + 1);
@@ -918,7 +944,7 @@ export default function CalendarPage() {
         const existing = new Date(task.deadline);
         newDeadline.setHours(existing.getHours(), existing.getMinutes(), 0, 0);
       } else {
-        newDeadline.setHours(9, 0, 0, 0);
+        newDeadline.setHours(DEFAULT_DROP_HOUR, 0, 0, 0);
       }
     }
 
@@ -963,6 +989,40 @@ export default function CalendarPage() {
   const openItem = (item: CalendarItem) => {
     setSelectedItem(item);
     setSheetOpen(true);
+  };
+
+  const handleEditTask = (task: TaskWithCategory) => {
+    setEditingTask(toUiTask(task));
+    setSheetOpen(false);
+    setTaskModalOpen(true);
+  };
+
+  const handleSaveTask = async (taskData: Partial<UiTask>) => {
+    if (!taskData.id) return;
+    const res = await fetch(`/api/tasks/${taskData.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: taskData.title,
+        description: taskData.description,
+        deadline: taskData.deadline?.toISOString(),
+        priority: taskData.priority,
+        categoryId: taskData.categoryId || null,
+        recurrence: taskData.recurrence,
+        recurrenceEnd: taskData.recurrenceEnd?.toISOString(),
+        subtasks: taskData.subtasks,
+        estimatedMinutes: taskData.estimatedMinutes ?? null,
+      }),
+    });
+    if (res.ok) {
+      const updated: TaskWithCategory = await res.json();
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      setSelectedItem({ type: "task", data: updated });
+      toast.success("Zadanie zaktualizowane");
+    } else {
+      toast.error("Nie udało się zaktualizować zadania");
+    }
+    setEditingTask(null);
   };
 
   const activeTask = activeTaskId ? tasks.find((t) => t.id === activeTaskId.split("@")[0]) ?? null : null;
@@ -1117,7 +1177,7 @@ export default function CalendarPage() {
                 ? <CheckSquare className="h-4 w-4" />
                 : <BookOpen className="h-4 w-4" />}
             </div>
-            <SheetHeader className="p-0 text-left">
+            <SheetHeader className="p-0 text-left flex-1">
               <SheetTitle className="text-base">
                 {selectedItem?.type === "task" ? "Szczegóły zadania" : "Szczegóły sesji"}
               </SheetTitle>
@@ -1252,8 +1312,29 @@ export default function CalendarPage() {
               )}
             </div>
           )}
+
+          {selectedItem?.type === "task" && (
+            <div className="px-6 py-4 border-t border-border">
+              <Button
+                className="w-full gap-2"
+                onClick={() => handleEditTask(selectedItem.data)}
+              >
+                <Pencil className="h-4 w-4" />
+                Edytuj zadanie
+              </Button>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
+
+      <TaskModal
+        open={taskModalOpen}
+        onOpenChange={setTaskModalOpen}
+        task={editingTask}
+        categories={categories}
+        onSave={handleSaveTask}
+        onCategoryCreated={(cat) => setCategories((prev) => [...prev, cat])}
+      />
     </div>
   );
 }

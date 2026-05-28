@@ -107,8 +107,8 @@ npm run dev
 - [x] Egzaminy — CRUD + generowanie planu nauki
 - [x] Google Calendar sync — POST /api/calendar/sync
 - [x] AI priorytetyzacja — przycisk "AI" na liście zadań
-- [ ] Powiadomienia email — cron job / webhook 24h przed deadlinem
-- [ ] PWA manifest + service worker
+- [x] Powiadomienia email — cron job / webhook 24h przed deadlinem
+- [x] PWA manifest + service worker
 
 ---
 

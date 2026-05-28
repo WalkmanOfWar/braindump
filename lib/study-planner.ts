@@ -1,9 +1,18 @@
+/** Milliseconds in one day — used for day-difference arithmetic. */
+const MS_PER_DAY = 86_400_000 as const;
+
+/** Hour set on all Date objects to avoid DST / UTC midnight edge cases. */
+const NOON_HOUR = 12 as const;
+
+/** Sessions stop this many days before the exam (day before = buffer day). */
+const DAYS_BUFFER_BEFORE_EXAM = 1 as const;
+
 /** Formats a Date as YYYY-MM-DD using LOCAL time (avoids UTC rollback issue). */
 function toLocalDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  const year  = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day   = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 /**
@@ -36,18 +45,17 @@ export function generateSessions(
 ): { date: string; topic: string; hours: number }[] {
   // Use client-supplied date to avoid UTC vs local midnight mismatch.
   const today = todayStr
-    ? new Date(todayStr + "T12:00:00") // noon avoids DST/UTC edge cases
+    ? new Date(todayStr + `T${NOON_HOUR}:00:00`) // noon avoids DST/UTC edge cases
     : new Date();
-  today.setHours(12, 0, 0, 0);
+  today.setHours(NOON_HOUR, 0, 0, 0);
 
   // examDate was parsed as UTC midnight — normalise to noon too.
   const exam = new Date(examDate);
-  exam.setHours(12, 0, 0, 0);
+  exam.setHours(NOON_HOUR, 0, 0, 0);
 
-  // Leave the day before the exam free — sessions go up to 2 days before.
-  const daysToSchedule = Math.floor(
-    (exam.getTime() - today.getTime()) / 86400000
-  ) - 1;
+  // Leave the day before the exam free — sessions go up to DAYS_BUFFER_BEFORE_EXAM days before.
+  const daysToSchedule =
+    Math.floor((exam.getTime() - today.getTime()) / MS_PER_DAY) - DAYS_BUFFER_BEFORE_EXAM;
 
   if (daysToSchedule <= 0) return [];
 
@@ -55,7 +63,7 @@ export function generateSessions(
     const date = new Date(today);
     date.setDate(date.getDate() + i);
     return {
-      date: toLocalDateStr(date),
+      date:  toLocalDateStr(date),
       topic: assignTopic(i, daysToSchedule, topics, interleaved),
       hours: dailyHours,
     };

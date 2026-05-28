@@ -1,16 +1,17 @@
 import { google } from "googleapis";
+import type { calendar_v3 } from "googleapis";
 import { prisma } from "./prisma";
 
 interface GoogleTokens {
-  access_token: string;
+  access_token:   string;
   refresh_token?: string;
-  expiry_date?: number;
-  token_type?: string;
-  scope?: string;
+  expiry_date?:   number;
+  token_type?:    string;
+  scope?:         string;
 }
 
-export async function getCalendarClient(userId: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+export async function getCalendarClient(userId: string): Promise<calendar_v3.Calendar> {
+  const user   = await prisma.user.findUnique({ where: { id: userId } });
   const tokens = user?.googleTokens as GoogleTokens | null;
   if (!tokens?.access_token) {
     throw new Error("Brak tokenów Google dla użytkownika");
@@ -25,27 +26,27 @@ export async function getCalendarClient(userId: string) {
 }
 
 export async function createCalendarEvent(
-  userId: string,
-  title: string,
-  start: Date,
-  end: Date,
+  userId:       string,
+  title:        string,
+  start:        Date,
+  end:          Date,
   description?: string
 ): Promise<string | null | undefined> {
   const calendar = await getCalendarClient(userId);
   const res = await calendar.events.insert({
-    calendarId: "primary",
+    calendarId:  "primary",
     requestBody: {
-      summary: title,
+      summary:     title,
       description,
       start: { dateTime: start.toISOString() },
-      end: { dateTime: end.toISOString() },
+      end:   { dateTime: end.toISOString() },
     },
   });
   return res.data.id;
 }
 
 export async function deleteCalendarEvent(
-  userId: string,
+  userId:  string,
   eventId: string
 ): Promise<void> {
   const calendar = await getCalendarClient(userId);
