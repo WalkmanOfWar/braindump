@@ -29,7 +29,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { MoreHorizontal, Pencil, Trash2, CalendarPlus, CalendarX2, Loader2, AlertTriangle, Repeat, Zap, MapPin, Timer, Brain, Battery } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, CalendarPlus, CalendarX2, Loader2, AlertTriangle, Repeat, Zap, MapPin, Timer, Brain, Battery, SkipForward } from 'lucide-react'
 import type { UiTask } from '@/types'
 import { getUrgencyLevel, getUrgencyColor, formatDate } from '@/lib/utils'
 interface CategoryInfo {
@@ -45,6 +45,7 @@ interface TaskCardProps {
   onEdit?: (task: UiTask) => void
   onDelete?: (id: string) => void
   onSyncCalendar?: (id: string, action: 'create' | 'delete') => Promise<void>
+  onSkipOccurrence?: (id: string) => void
   selectionMode?: boolean
   selected?: boolean
   onSelect?: (id: string) => void
@@ -59,6 +60,7 @@ export function TaskCard({
   onEdit,
   onDelete,
   onSyncCalendar,
+  onSkipOccurrence,
   selectionMode = false,
   selected = false,
   onSelect,
@@ -160,6 +162,12 @@ export function TaskCard({
                 <Pencil className="h-4 w-4 mr-2" />
                 Edytuj
               </DropdownMenuItem>
+              {task.recurrence !== "none" && onSkipOccurrence && !task.completed && (
+                <DropdownMenuItem onClick={() => onSkipOccurrence(task.id)} className="text-muted-foreground">
+                  <SkipForward className="h-4 w-4 mr-2" />
+                  Pomiń tę instancję
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => setConfirmDelete(true)} className="text-destructive">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Usuń

@@ -60,7 +60,27 @@ export async function PATCH(
     );
   }
 
-  const { title, description, deadline, priority, categoryId, goalId, estimatedMinutes, actualMinutes, done, recurrence, recurrenceEnd, subtasks, intentionWhen, intentionWhere, isUrgent, isImportant, energyLevel } = parsed.data;
+  const { title, description, deadline, priority, categoryId, goalId, estimatedMinutes, actualMinutes, done, recurrence, recurrenceEnd, subtasks, intentionWhen, intentionWhere, isUrgent, isImportant, energyLevel, skipOccurrence } = parsed.data;
+
+  // Skip one occurrence: advance the deadline by one recurrence period instead of completing
+  if (skipOccurrence === true) {
+    if (existing.recurrence === "none" || !existing.deadline) {
+      return NextResponse.json({ error: "Zadanie nie jest cykliczne" }, { status: 400 });
+    }
+    const nextDeadline = nextRecurrenceDate(new Date(existing.deadline), existing.recurrence);
+    const pastEnd = existing.recurrenceEnd && nextDeadline > new Date(existing.recurrenceEnd);
+    if (pastEnd) {
+      // No more occurrences — delete the task
+      await prisma.task.delete({ where: { id } });
+      return NextResponse.json({ deleted: true });
+    }
+    const updated = await prisma.task.update({
+      where: { id },
+      data: { deadline: nextDeadline, reminderSentAt: null },
+      include: { category: true },
+    });
+    return NextResponse.json(updated);
+  }
 
   const task = await prisma.task.update({
     where: { id },

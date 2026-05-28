@@ -26,6 +26,7 @@ import {
   Flame,
   CalendarDays,
   Tag,
+  Lightbulb,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { TaskWithCategory, ExamWithSessions, Category } from "@/types";
@@ -296,6 +297,32 @@ export function CommandPalette() {
             </CommandItem>
           </CommandGroup>
         )}
+
+        {/* ── Quick create: exam / flashcard deck ── */}
+        <CommandGroup heading="Szybkie tworzenie">
+          <CommandItem
+            value="nowy egzamin dodaj utwórz"
+            onSelect={() => navigate("/exams?new=1")}
+            className="gap-3"
+          >
+            <div className="flex items-center justify-center w-6 h-6 rounded-md bg-violet-500/10 shrink-0">
+              <GraduationCap className="h-3.5 w-3.5 text-violet-500" />
+            </div>
+            Nowy egzamin
+            <CommandShortcut>E</CommandShortcut>
+          </CommandItem>
+          <CommandItem
+            value="nowa talia fiszek utwórz dodaj"
+            onSelect={() => navigate("/flashcards?new=1")}
+            className="gap-3"
+          >
+            <div className="flex items-center justify-center w-6 h-6 rounded-md bg-amber-500/10 shrink-0">
+              <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+            </div>
+            Nowa talia fiszek
+            <CommandShortcut>F</CommandShortcut>
+          </CommandItem>
+        </CommandGroup>
 
         {/* ── Navigation ── */}
         <CommandGroup heading="Nawigacja">

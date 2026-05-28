@@ -112,14 +112,18 @@ export function useEnergyCheckIn() {
     const today = getTodayStr()
     const storageKey = `energy-checkin-${today}`
 
-    // Already dismissed/done today
-    if (localStorage.getItem(storageKey)) return
+    const stored = localStorage.getItem(storageKey)
+    if (stored) {
+      // Restore today's level from cache — don't show the modal again
+      setTodayLevel(Number(stored))
+      return
+    }
 
-    // Only prompt between 05:00 and 14:00
+    // Only auto-prompt between 05:00 and 14:00
     const hour = new Date().getHours()
     if (hour < 5 || hour >= 14) return
 
-    // Check if already submitted today (in case of page refresh)
+    // Check if already submitted today (in case of page refresh without cache)
     fetch(`/api/energy-checkin?date=${today}`)
       .then((r) => r.json())
       .then((data: { level?: number } | null) => {

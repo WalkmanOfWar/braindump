@@ -28,6 +28,7 @@ export const TaskCreateSchema = z.object({
 export const TaskUpdateSchema = TaskCreateSchema.partial().extend({
   done: z.boolean().optional(),
   reminderSentAt: z.string().nullable().optional(),
+  skipOccurrence: z.boolean().optional(), // advance deadline by one recurrence period (skip this instance)
 });
 
 export const WeeklyPlanSchema = z.object({

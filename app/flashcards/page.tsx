@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ForgettingCurveChart } from "@/components/forgetting-curve-chart";
 import { TopNavbar } from "@/components/top-navbar";
 import { BottomNav } from "@/components/bottom-nav";
@@ -34,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { formatNextInterval } from "@/lib/fsrs";
 import type { FlashcardDeckWithStats, Flashcard } from "@/types";
 import { toast } from "sonner";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // ─── EMOJI PICKER ──────────────────────────────────────────────────────────────
 const EMOJIS = ["📚", "🧠", "🔬", "📐", "🌍", "🎵", "💻", "⚗️", "📜", "🗺️", "🏛️", "🌱"];
@@ -90,6 +92,9 @@ export default function FlashcardsPage() {
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const fetchDecks = useCallback(async () => {
     const res = await fetch("/api/flashcards");
     if (res.ok) setDecks(await res.json() as FlashcardDeckWithStats[]);
@@ -97,6 +102,15 @@ export default function FlashcardsPage() {
   }, []);
 
   useEffect(() => { fetchDecks(); }, [fetchDecks]);
+
+  // Auto-open create modal when navigated from command palette (?new=1)
+  useEffect(() => {
+    if (searchParams.get("new") === "1" && !loading) {
+      setDeckForm({ title: "", emoji: "📚", color: "#7c5cff" });
+      setDeckModal({ open: true });
+      router.replace("/flashcards");
+    }
+  }, [searchParams, loading, router]);
 
   const totalDue = decks.reduce((s, d) => s + d.dueCount, 0);
   const totalCards = decks.reduce((s, d) => s + d._count.cards, 0);
@@ -366,7 +380,12 @@ export default function FlashcardsPage() {
             ))}
           </div>
         ) : decks.length === 0 ? (
-          <EmptyState onNew={() => openDeckModal()} />
+          <EmptyState
+            emoji="📚"
+            title="Brak talii fiszek"
+            description="Stwórz talię i zacznij naukę metodą powtórzeń — najskuteczniejszą techniką zapamiętywania."
+            action={{ label: "Utwórz pierwszą talię", onClick: () => openDeckModal() }}
+          />
         ) : (
           <div className="space-y-3">
             {decks.map((deck) => (
@@ -662,21 +681,3 @@ function DeckCard({
   );
 }
 
-// ─── EMPTY STATE ───────────────────────────────────────────────────────────────
-function EmptyState({ onNew }: { onNew: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
-      <div className="text-5xl">📚</div>
-      <div>
-        <h2 className="text-lg font-semibold mb-1">Brak talii fiszek</h2>
-        <p className="text-sm text-muted-foreground max-w-xs">
-          Stwórz talię i zacznij naukę metodą powtórzeń — najskuteczniejszą techniką zapamiętywania.
-        </p>
-      </div>
-      <Button onClick={onNew} size="lg">
-        <Plus className="h-4 w-4 mr-2" />
-        Utwórz pierwszą talię
-      </Button>
-    </div>
-  );
-}
